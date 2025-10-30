@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "name": "Sri Ponnambala Vanesar Kovil",
+    "location": "Colombo, Sri Lanka",
+    "latitude": 6.9344,
+    "longitude": 79.8358,
+    "description": "A prominent Hindu temple in Colombo dedicated to Lord Dharam Rajah. Known for its colorful architecture and religious festivals.",
+    "photos": [
+      "http://localhost:9000/temples/sri-ponnambala-1.jpg",
+      "http://localhost:9000/temples/sri-ponnambala-2.jpg"
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Koneshar Temple",
+    "location": "Trincomalee, Sri Lanka",
+     "latitude": 8.5711,
+     "longitude": 81.2332,
+    "description": "Ancient Hindu temple dedicated to Lord Murukan, located near the cliff top of Trincomalee.",
+    "photos": [
+      "http://localhost:9000/temples/koneshar-1.jpg"
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Sri Mahapullari Kovil",
+    "location": "Mannar, Sri Lanka",
+     "latitude": 8.9808,
+     "longitude": 79.9209,
+    "description": "A sacred Hindu temple in Mannar, known for its historical significance.",
+    "photos": [
+      "https://via.placeholder.com/300x200?text=Sri+Mahapullari+Kovil+1",
+      "https://via.placeholder.com/300x200?text=Sri+Mahapullari+Kovil+2",
+      "https://via.placeholder.com/300x200?text=Sri+Mahapullari+Kovil+3"
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Muneshwaram Temple",
+    "location": "Muneshwaram, Sri Lanka",
+     "latitude": 8.364,
+     "longitude": 80.027,
+    "description": "One of the five sacred sites of Shiva in Sri Lanka, known as Nallur Kandaswamy.",
+    "photos": [
+      "https://via.placeholder.com/300x200?text=Muneshwaram+Temple+1"
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Thirukoneswaram Temple",
+    "location": "Trincomalee, Sri Lanka",
+    "latitude": 8.5772,
+    "longitude": 81.2194,
+    "description": "Ancient Hindu temple dedicated to Lord Shiva, situated on a hill overlooking the sea.",
+    "photos": [
+      "https://via.placeholder.com/300x200?text=Thirukoneswaram+Temple+1"
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Naguleswaram Temple",
+    "location": "Keerimalai, Sri Lanka",
+    "latitude": 7.7833,
+    "longitude": 79.9833,
+    "description": "Combined Hindu temple dedicated to Lord Shiva and Lord Murugan, located on a coastal site.",
+    "photos": [
+      "https://via.placeholder.com/300x200?text=Naguleswaram+Temple+1",
+      "https://via.placeholder.com/300x200?text=Naguleswaram+Temple+2"
+    ]
+  },
+  {
+    "id": 7,
+    "name": "Sri Kathiravelau Manikka Vinayagar Temple",
+    "location": "Kurunegala, Sri Lanka",
+    "latitude": 7.4867,
+    "longitude": 80.3667,
+    "description": "Popular temple dedicated to Lord Ganesha with significant cultural importance.",
+    "photos": [
+      "https://via.placeholder.com/300x200?text=Sri+Kathiravelau+Temple+1"
+    ]
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "name": "srilanka-hindu-temples-monorepo",
+  "private": true,
+  "workspaces": [
+    "mobile",
+    "backend",
+    "admin"
+  ],
+  "scripts": {
+    "build": "npm run build:admin && npm run build:mobile && npm run build:backend",
+    "build:admin": "cd admin && npm run build",
+    "build:mobile": "cd mobile && npm run build",
+    "build:backend": "echo 'No build step for backend'",
+    "dev": "concurrently \"npm run dev:admin\" \"npm run dev:mobile\" \"npm run dev:backend\"",
+    "dev:admin": "cd admin && npm run dev",
+    "dev:mobile": "cd mobile && npm run dev",
+    "dev:backend": "cd backend && npm run seed && npm run dev",
+    "sync:android": "cd mobile && npm run build && npx cap sync android"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "concurrently": "^9.2.1"
+  }
+}

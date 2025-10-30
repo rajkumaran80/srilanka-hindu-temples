@@ -1,0 +1,16 @@
+/* Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
+.App {
+  text-align: center;
+}
+
+header {
+  background-color: #f06292;
+  color: white;
+  padding: 10px;
+}
+
+main {
+  height: calc(100vh - 80px);
+}

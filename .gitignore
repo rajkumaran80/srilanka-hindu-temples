@@ -1,0 +1,49 @@
+# Root .gitignore for srilanka-hindu-temples
+# Keep this file plain text. It previously contained rich-text (RTF) formatting; replaced with a clean gitignore.
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+www/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# IDE/editor
+.vscode/
+.idea/
+*.iml
+
+# Coverage
+coverage/
+
+# Capacitor / Android / iOS build artifacts
+android/build/
+android/app/build/
+ios/Pods/
+ios/build/
+
+# Misc
+*.swp
+*.swo
+*.tmp
+
+# Ignore local OS-specific and temporary files
+*.local
+
+# End of file
