@@ -1,0 +1,47 @@
+{
+  "name": "temple-scraper",
+  "version": "1.0.0",
+  "description": "OSM + Google-free temple crawler for Sri Lanka; saves to MongoDB and uploads photos to GitHub/CDN.",
+  "main": "dist/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --enable-source-maps dist/run.js",
+    "dev": "tsx src/run.ts",
+    "run-osm": "tsx src/run-osm.ts",
+    "run-google": "tsx src/run.ts",
+    "enrich": "tsx src/run-enrich.ts",
+    "lint": "eslint . --ext .ts"
+  },
+  "keywords": [
+    "openstreetmap",
+    "overpass",
+    "wikidata",
+    "mongodb",
+    "temples",
+    "scraper"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.1.4",
+    "form-data": "^4.0.0",
+    "mongodb": "^5.8.0",
+    "node-fetch": "^2.6.12",
+    "octokit": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/form-data": "^2.5.1",
+    "@types/node": "^20.4.2",
+    "@types/node-fetch": "^2.6.4",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
+    "eslint": "^8.47.0",
+    "ts-node": "^10.9.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.6.2"
+  }
+}

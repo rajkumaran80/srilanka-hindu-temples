@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import { Capacitor } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import 'leaflet/dist/leaflet.css';
 
 // Import marker icons for mobile compatibility
 import markerIcon from '/images/marker-icon-green.png';
+import markerIconSelected from '/images/marker-icon-red.png';
 import markerIconRetina from '/images/marker-icon-2x-green.png';
 import markerShadow from '/images/marker-shadow.png';
 
@@ -16,13 +17,36 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIconRetina,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
+  iconSize: [20, 32],
+  iconAnchor: [10, 32],
+  popupAnchor: [0, -32],
+  shadowSize: [32, 32],
+});
+
+// Create icons for markers
+const greenIcon = new L.Icon({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [20, 32],
+  iconAnchor: [10, 32],
+  popupAnchor: [0, -32],
+  shadowSize: [32, 32],
+});
+
+const selectedIcon = new L.Icon({
+  iconUrl: markerIconRetina,
+  shadowUrl: markerShadow,
+  iconSize: [30, 48], // Larger size for selected
+  iconAnchor: [15, 48],
+  popupAnchor: [0, -48],
+  shadowSize: [48, 48],
 });
 
 import TempleDetail from './TempleDetail';
 
 // Helper function to get the correct API base URL based on platform
 const getApiBaseUrl = async () => {
-  if (!Capacitor.isNativePlatform()) {
+  /*if (!Capacitor.isNativePlatform()) {
     // Web platform - use localhost
     return 'http://localhost:8080';
   }
@@ -34,14 +58,44 @@ const getApiBaseUrl = async () => {
   } else if (deviceInfo.platform === 'ios') {
     // iOS simulator - need to get host machine IP
     return 'http://192.168.1.159:8080';
-  }
+  }*/
 
   // Fallback
-  return 'https://srilanka-hindu-temples-api-4wzm.vercel.app';
+  return 'http://localhost:8080'
+  // return 'https://srilanka-hindu-temples-api.vercel.app';
+
+};
+
+// Component to handle map flying
+const MapController = ({ flyToPosition, onMapReady, onFlyToComplete, isFlyingRef }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (flyToPosition) {
+      map.flyTo(flyToPosition, 15);
+      // Listen for moveend to know when flyTo completes
+      const handleMoveEnd = () => {
+        if (onFlyToComplete) {
+          onFlyToComplete();
+        }
+        isFlyingRef.current = false;
+        map.off('moveend', handleMoveEnd);
+      };
+      map.on('moveend', handleMoveEnd);
+    }
+  }, [flyToPosition, onFlyToComplete, isFlyingRef]);
+
+  useEffect(() => {
+    if (onMapReady) {
+      onMapReady(map);
+    }
+  }, [map, onMapReady]);
+
+  return null;
 };
 
 // Component to handle map events
-const MapEventHandler = ({ onBoundsChange, onZoomChange }) => {
+const MapEventHandler = ({ onBoundsChange, onZoomChange, onMapInteraction, onMapClick, isFlyingRef }) => {
   const map = useMapEvents({
     zoomend: () => {
       const zoom = map.getZoom();
@@ -49,10 +103,22 @@ const MapEventHandler = ({ onBoundsChange, onZoomChange }) => {
       // Also trigger bounds change when zoom ends
       const bounds = map.getBounds();
       onBoundsChange(bounds);
+      // Close popups on zoom if not flying
+      if (!isFlyingRef.current) {
+        onMapInteraction();
+      }
     },
     moveend: () => {
       const bounds = map.getBounds();
       onBoundsChange(bounds);
+      // Close popups on move if not flying
+      if (!isFlyingRef.current) {
+        onMapInteraction();
+      }
+    },
+    click: () => {
+      // Reset search and selected marker on map click
+      onMapClick();
     }
   });
   return null;
@@ -63,8 +129,18 @@ const MapComponent = () => {
   const [temples, setTemples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadedBounds, setLoadedBounds] = useState(new Set()); // Track loaded geographic areas
-  const [currentZoom, setCurrentZoom] = useState(8);
+  const [currentZoom, setCurrentZoom] = useState(7);
   const [apiBaseUrl, setApiBaseUrl] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [flyToPosition, setFlyToPosition] = useState(null);
+  const [selectedMarkerId, setSelectedMarkerId] = useState(null);
+  const [mapInteractionByUser, setMapInteractionByUser] = useState(true);
+
+  const markersRef = useRef({});
+  const mapRef = useRef(null);
+  const isFlyingRef = useRef(false);
   const minZoomForBoundsLoading = 10; // Only load temples by bounds when zoomed in enough
 
   const fetchInitialTemples = async () => {
@@ -131,6 +207,76 @@ const MapComponent = () => {
     setCurrentZoom(zoom);
   };
 
+  const searchTemplesByName = async (name) => {
+    if (!name.trim()) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/temples_search_by_name.ts?name=${encodeURIComponent(name)}`);
+      if (response.ok) {
+        const results = await response.json();
+        setSearchResults(results);
+        setShowDropdown(results.length > 0);
+      }
+    } catch (error) {
+      console.error('Error searching temples:', error);
+    }
+  };
+
+  const selectTemple = (temple) => {
+    const templeId = temple._id || temple.id;
+    setSelectedMarkerId(templeId);
+    isFlyingRef.current = true;
+    setFlyToPosition([temple.latitude, temple.longitude]);
+    setSearchTerm('');
+    setSearchResults([]);
+    setShowDropdown(false);
+    setMapInteractionByUser(false);
+    // Ensure the temple is in the temples list for marker rendering
+    setTemples(prev => {
+      const exists = prev.some(t => (t._id || t.id) === templeId);
+      if (!exists) {
+        return [...prev, temple];
+      }
+      return prev;
+    });
+    // Open the popup immediately
+    setTimeout(() => {
+      const marker = markersRef.current[templeId];
+      if (marker && marker._map) {
+        marker.openPopup();
+      }
+    }, 100); // Small delay to ensure marker is rendered
+  };
+
+  const handleMapReady = (map) => {
+    mapRef.current = map;
+  };
+
+  const handleFlyToComplete = () => {
+    setFlyToPosition(null);
+    setMapInteractionByUser(true);
+  };
+
+  const handleMapInteraction = () => {
+    // Close all popups
+    if (mapInteractionByUser && mapRef.current) {
+      mapRef.current.closePopup();
+    }
+    // Reset search
+    setSearchTerm('');
+    setSearchResults([]);
+    setShowDropdown(false);
+  };
+
+  const handleMapClick = () => {
+    handleMapInteraction();
+    // Reset selected marker on map click
+    setSelectedMarkerId(null);
+  };
+
   useEffect(() => {
     const initializeApi = async () => {
       const baseUrl = await getApiBaseUrl();
@@ -145,42 +291,108 @@ const MapComponent = () => {
     }
   }, [apiBaseUrl]);
 
+  useEffect(() => {
+    if (apiBaseUrl) {
+      searchTemplesByName(searchTerm);
+    }
+  }, [searchTerm, apiBaseUrl]);
+
+  // Close popups when temple details are opened
+  useEffect(() => {
+    if (selectedTemple && mapRef.current) {
+      mapRef.current.closePopup();
+      setSelectedMarkerId(null);
+    }
+  }, [selectedTemple]);
+
+  // Update marker icons when selection changes
+  useEffect(() => {
+    Object.keys(markersRef.current).forEach(templeId => {
+      const marker = markersRef.current[templeId];
+      if (marker) {
+        if (templeId === selectedMarkerId) {
+          marker.setIcon(selectedIcon);
+        } else {
+          marker.setIcon(greenIcon);
+        }
+      }
+    });
+  }, [selectedMarkerId]);
+
 
 
   const sriLankaCenter = [7.8731, 80.7718];
 
   try {
     console.log('Rendering MapComponent, temples:', temples, 'loading:', loading);
+
+    const idFor = (temple) => String(temple._id ?? temple.id ?? '');
+
     return (
-      <div>
-        <p>Loading temples... {loading ? 'Loading' : 'Finished'} - {temples.length} temples</p>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <style>
+          {`
+            .selected-marker img {
+              box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
+              border-radius: 50%;
+            }
+          `}
+        </style>
         {!loading && temples.length > 0 && (
-          <MapContainer center={sriLankaCenter} zoom={7} style={{ height: '500px', width: '100%' }}>
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          <>
+            <input
+              type="text"
+              placeholder="Search temples by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ margin: '5px', padding: '8px', fontSize: '14px' }}
             />
-            <MapEventHandler
-              onBoundsChange={handleBoundsChange}
-              onZoomChange={handleZoomChange}
-            />
-            {temples.map((temple) => (
+            {showDropdown && (
+              <ul style={{ margin: '0 5px', padding: 0, listStyle: 'none', background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 1000, width: 'calc(100% - 10px)', top: '40px' }}>
+                {searchResults.map((temple) => (
+                  <li key={temple._id} onClick={() => selectTemple(temple)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee', textAlign: 'left' }}>
+                    {temple.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <MapContainer center={sriLankaCenter} zoom={7} zoomControl={false} style={{ height: '100%', width: '100%', flex: 1 }}>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MapController flyToPosition={flyToPosition} onMapReady={handleMapReady} onFlyToComplete={handleFlyToComplete} isFlyingRef={isFlyingRef} />
+              <MapEventHandler
+                onBoundsChange={handleBoundsChange}
+                onZoomChange={handleZoomChange}
+                onMapInteraction={handleMapInteraction}
+                onMapClick={handleMapClick}
+                isFlyingRef={isFlyingRef}
+              />
+              {temples.map((temple) => (
               <Marker
                 key={temple._id || temple.id}
                 position={[temple.latitude, temple.longitude]}
+                ref={(el) => { markersRef.current[temple._id || temple.id] = el; }}
+                className={selectedMarkerId === (temple._id || temple.id) ? 'selected-marker' : ''}
+                eventHandlers={{
+                  click: () => setSelectedMarkerId(idFor(temple)),
+                }}
               >
-                <Popup>
-                  <div>
-                    <h3>{temple.name}</h3>
-                    <p>{temple.location}</p>
+                <Tooltip>{temple.name}</Tooltip>
+                <Popup maxWidth={200} minWidth={150} autoPan={false}>
+                  <div style={{ fontSize: '12px' }}>
+                    <h3 style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{temple.name}</h3>
+                    <p style={{ margin: '0 0 5px 0' }}>{temple.location}</p>
                     <button onClick={() => {
                       setSelectedTemple(temple);
-                    }}>View Details</button>
+                    }} style={{ fontSize: '11px', padding: '4px 8px' }}>View Details</button>
                   </div>
                 </Popup>
               </Marker>
             ))}
           </MapContainer>
+          </>
         )}
         {selectedTemple && (
           <TempleDetail
