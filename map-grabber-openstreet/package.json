@@ -11,9 +11,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "node --enable-source-maps dist/run.js",
     "dev": "tsx src/run.ts",
-    "run-osm": "tsx src/run-osm.ts",
+    "run-osm": "tsx src/osm-to-mongo.ts",
     "run-google": "tsx src/run.ts",
     "enrich": "tsx src/run-enrich.ts",
+    "enrich-locations": "tsx src/run-location-enricher.ts",
     "lint": "eslint . --ext .ts"
   },
   "keywords": [

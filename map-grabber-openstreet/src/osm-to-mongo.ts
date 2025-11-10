@@ -27,6 +27,7 @@ type OsmImportedDoc = {
   tags: Record<string, string>;
   source: "osm";
   photos?: PhotoDoc[]; // CDN + metadata
+  unapproved_photos?: string[]; // Relative paths of uploaded photos
   added_at: Date;
 };
 
@@ -77,7 +78,7 @@ async function fetchCommonsImageInfoByPageid(pageid: number): Promise<{ url?: st
 }
 
 async function downloadAndUploadImagesWithMeta(name: string, imageUrls: string[], imageMeta: { [url: string]: { license?: string | null; artist?: string | null } } = {}): Promise<PhotoDoc[]> {
-  const folderBase = toFolderBase(name);
+  const folderBase = `temples_photos/${toFolderBase(name)}`;
   const folder = await ensureUniqueFolder(folderBase);
   const slug = fileSlug(name);
 
@@ -102,7 +103,7 @@ async function downloadAndUploadImagesWithMeta(name: string, imageUrls: string[]
       }
       ext = ext.replace(/[^a-z0-9]/gi, "") || "jpg";
       const filename = `${slug}-osm-${idx}.${ext}`;
-      const path = `photos/${folder}/${filename}`;
+      const path = `${folder}/${filename}`;
 
       await upsertFile(path, buf, `feat: add ${name} photo ${idx}`);
       const cdn = buildCdnUrl(CDN_BASE, path);
@@ -256,25 +257,36 @@ export async function importOsmTemplesToMongo() {
       continue;
     }
 
-    // better dedupe: try by osm_id first, then by coordinates +/- small epsilon
-    const existsByOsm = await coll.findOne({ osm_id: el.id });
-    const coordExists = await coll.findOne({
-      latitude: { $gte: lat - 0.0003, $lte: lat + 0.0003 },
-      longitude: { $gte: lon - 0.0003, $lte: lon + 0.0003 },
-    });
+    // Check if temple already exists in database
+    const existingTemple = await coll.findOne(
+        { osm_id: el.id }
+    );
 
-    if (existsByOsm || coordExists) {
-      console.log(`Already in DB (skip): ${name} (${el.type}/${el.id})`);
+    if (existingTemple) {
+      console.log(`Temple already exists in DB (skip): ${name} (${el.type}/${el.id})`);
       continue;
     }
+
+    // Temple does not exist, proceed with insertion
+    console.log(`New temple found, processing: ${name} (${el.type}/${el.id})`);
 
     // Collect candidate image URLs & metadata
     const { urls: uniqueImgs, meta } = await findImagesAndMetaForOsm({ lat, lon, tags });
 
     // Optionally download/upload images
     let photoDocs: PhotoDoc[] = [];
+    let unapprovedPhotoPaths: string[] = [];
     if (DOWNLOAD_PHOTOS && uniqueImgs.length) {
       photoDocs = await downloadAndUploadImagesWithMeta(name, uniqueImgs, meta);
+      // Extract relative paths for unapproved_photos
+      unapprovedPhotoPaths = photoDocs.map(photo => {
+        // Extract the path after the CDN base
+        const cdnUrl = new URL(photo.cdn_url);
+        const pathParts = cdnUrl.pathname.split('/');
+        // Remove the first empty part and reconstruct the path
+        const relativePath = pathParts.slice(1).join('/');
+        return relativePath;
+      });
     }
 
     const doc: OsmImportedDoc = {
@@ -286,12 +298,18 @@ export async function importOsmTemplesToMongo() {
       tags,
       source: "osm",
       photos: photoDocs,
+      unapproved_photos: unapprovedPhotoPaths,
       added_at: new Date(),
     };
 
-    await coll.updateOne({ osm_id: el.id }, { $set: doc }, { upsert: true });
-    added++;
-    console.log(`Saved OSM temple: ${name} (${el.id}) with ${photoDocs.length} photos`);
+    // Only insert if temple doesn't exist
+    const result = await coll.insertOne(doc);
+    if (result.acknowledged) {
+      added++;
+      console.log(`Inserted new OSM temple: ${name} (${el.id}) with ${photoDocs.length} photos`);
+    } else {
+      console.log(`Failed to insert temple: ${name} (${el.id})`);
+    }
 
     // Respectful pause to avoid rate-limits
     await new Promise((r) => setTimeout(r, 250));
@@ -299,4 +317,16 @@ export async function importOsmTemplesToMongo() {
 
   console.log(`Import complete. Added ${added} new OSM temples.`);
   await mongoClose();
+  console.log(`Fetched ${elements.length} OSM elements`);
 }
+
+async function main() {
+  try {
+    await importOsmTemplesToMongo();
+  } catch (e: any) {
+    console.error("Run failed:", e?.message ?? e);
+    process.exit(1);
+  }
+}
+
+main();
