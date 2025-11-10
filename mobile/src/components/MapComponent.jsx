@@ -61,8 +61,8 @@ const getApiBaseUrl = async () => {
   }*/
 
   // Fallback
-  return 'http://localhost:8080'
-  // return 'https://srilanka-hindu-temples-api.vercel.app';
+//  return 'http://localhost:8080'
+   return 'https://srilanka-hindu-temples-api.vercel.app';
 
 };
 
@@ -137,6 +137,16 @@ const MapComponent = () => {
   const [flyToPosition, setFlyToPosition] = useState(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   const [mapInteractionByUser, setMapInteractionByUser] = useState(true);
+  const [showCommentForm, setShowCommentForm] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [commentMessage, setCommentMessage] = useState('');
+  const [commentMessageType, setCommentMessageType] = useState(''); // 'success' or 'error'
+  const [showSuggestNameForm, setShowSuggestNameForm] = useState(false);
+  const [suggestedNameText, setSuggestedNameText] = useState('');
+  const [submittingSuggestedName, setSubmittingSuggestedName] = useState(false);
+  const [suggestNameMessage, setSuggestNameMessage] = useState('');
+  const [suggestNameMessageType, setSuggestNameMessageType] = useState(''); // 'success' or 'error'
 
   const markersRef = useRef({});
   const mapRef = useRef(null);
@@ -277,6 +287,80 @@ const MapComponent = () => {
     setSelectedMarkerId(null);
   };
 
+  const submitComment = async (templeId, comment) => {
+    if (!comment.trim()) return;
+
+    setSubmittingComment(true);
+    setCommentMessage('');
+    setCommentMessageType('');
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/add_temple_comment.ts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templeId: templeId,
+          comment: comment.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setCommentMessage('Comment added successfully!');
+        setCommentMessageType('success');
+        setCommentText('');
+        setShowCommentForm(false);
+      } else {
+        setCommentMessage('Failed to add comment. Please try again.');
+        setCommentMessageType('error');
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      setCommentMessage('Error submitting comment. Please try again.');
+      setCommentMessageType('error');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const submitSuggestedName = async (templeId, suggestedName) => {
+    if (!suggestedName.trim()) return;
+
+    setSubmittingSuggestedName(true);
+    setSuggestNameMessage('');
+    setSuggestNameMessageType('');
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/add_suggested_temple_name.ts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templeId: templeId,
+          suggestedName: suggestedName.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setSuggestNameMessage('Suggested name submitted successfully!');
+        setSuggestNameMessageType('success');
+        setSuggestedNameText('');
+        setShowSuggestNameForm(false);
+      } else {
+        setSuggestNameMessage('Failed to submit suggested name. Please try again.');
+        setSuggestNameMessageType('error');
+      }
+    } catch (error) {
+      console.error('Error submitting suggested name:', error);
+      setSuggestNameMessage('Error submitting suggested name. Please try again.');
+      setSuggestNameMessageType('error');
+    } finally {
+      setSubmittingSuggestedName(false);
+    }
+  };
+
   useEffect(() => {
     const initializeApi = async () => {
       const baseUrl = await getApiBaseUrl();
@@ -319,6 +403,28 @@ const MapComponent = () => {
     });
   }, [selectedMarkerId]);
 
+  // Auto-hide comment messages after 3 seconds
+  useEffect(() => {
+    if (commentMessage) {
+      const timer = setTimeout(() => {
+        setCommentMessage('');
+        setCommentMessageType('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [commentMessage]);
+
+  // Auto-hide suggest name messages after 3 seconds
+  useEffect(() => {
+    if (suggestNameMessage) {
+      const timer = setTimeout(() => {
+        setSuggestNameMessage('');
+        setSuggestNameMessageType('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [suggestNameMessage]);
+
 
 
   const sriLankaCenter = [7.8731, 80.7718];
@@ -351,7 +457,8 @@ const MapComponent = () => {
               <ul style={{ margin: '0 5px', padding: 0, listStyle: 'none', background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 1000, width: 'calc(100% - 10px)', top: '40px' }}>
                 {searchResults.map((temple) => (
                   <li key={temple._id} onClick={() => selectTemple(temple)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee', textAlign: 'left' }}>
-                    {temple.name}
+                    <div style={{ fontWeight: 'bold' }}>{temple.name}</div>
+                    {temple.location && <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{temple.location}</div>}
                   </li>
                 ))}
               </ul>
@@ -380,13 +487,151 @@ const MapComponent = () => {
                 }}
               >
                 <Tooltip>{temple.name}</Tooltip>
-                <Popup maxWidth={200} minWidth={150} autoPan={false}>
+                <Popup maxWidth={250} minWidth={200} autoPan={false}>
                   <div style={{ fontSize: '12px' }}>
                     <h3 style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{temple.name}</h3>
                     <p style={{ margin: '0 0 5px 0' }}>{temple.location}</p>
-                    <button onClick={() => {
-                      setSelectedTemple(temple);
-                    }} style={{ fontSize: '11px', padding: '4px 8px' }}>View Details</button>
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
+                      <button onClick={() => {
+                        setSelectedTemple(temple);
+                      }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>View Details</button>
+                      <button onClick={() => {
+                        setShowCommentForm(true);
+                        setCommentText('');
+                      }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>Add Comment</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
+                      <button onClick={() => {
+                        setShowSuggestNameForm(true);
+                        setSuggestedNameText('');
+                      }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>Suggest Name</button>
+                    </div>
+                    {showCommentForm && selectedMarkerId === idFor(temple) && (
+                      <div style={{ border: '1px solid #ccc', padding: '8px', marginTop: '5px', backgroundColor: '#f9f9f9' }}>
+                        <textarea
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder="Enter your comment..."
+                          rows={3}
+                          style={{ width: '100%', fontSize: '11px', padding: '4px', marginBottom: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                          disabled={submittingComment}
+                        />
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => submitComment(idFor(temple), commentText)}
+                            disabled={submittingComment || !commentText.trim()}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: submittingComment ? '#ccc' : '#007bff',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: submittingComment ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {submittingComment ? 'Submitting...' : 'Submit'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowCommentForm(false);
+                              setCommentText('');
+                            }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: '#6c757d',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
+                      <div style={{ border: '1px solid #ccc', padding: '8px', marginTop: '5px', backgroundColor: '#f9f9f9' }}>
+                        <input
+                          type="text"
+                          value={suggestedNameText}
+                          onChange={(e) => setSuggestedNameText(e.target.value)}
+                          placeholder="Enter suggested temple name..."
+                          style={{ width: '100%', fontSize: '11px', padding: '4px', marginBottom: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                          disabled={submittingSuggestedName}
+                        />
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
+                            disabled={submittingSuggestedName || !suggestedNameText.trim()}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: submittingSuggestedName ? '#ccc' : '#007bff',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: submittingSuggestedName ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {submittingSuggestedName ? 'Submitting...' : 'Submit'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowSuggestNameForm(false);
+                              setSuggestedNameText('');
+                            }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: '#6c757d',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {commentMessage && selectedMarkerId === idFor(temple) && (
+                      <div style={{
+                        padding: '6px',
+                        marginTop: '5px',
+                        borderRadius: '3px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        backgroundColor: commentMessageType === 'success' ? '#d4edda' : '#f8d7da',
+                        color: commentMessageType === 'success' ? '#155724' : '#721c24',
+                        border: `1px solid ${commentMessageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+                      }}>
+                        {commentMessage}
+                      </div>
+                    )}
+                    {suggestNameMessage && selectedMarkerId === idFor(temple) && (
+                      <div style={{
+                        padding: '6px',
+                        marginTop: '5px',
+                        borderRadius: '3px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        backgroundColor: suggestNameMessageType === 'success' ? '#d4edda' : '#f8d7da',
+                        color: suggestNameMessageType === 'success' ? '#155724' : '#721c24',
+                        border: `1px solid ${suggestNameMessageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+                      }}>
+                        {suggestNameMessage}
+                      </div>
+                    )}
                   </div>
                 </Popup>
               </Marker>
