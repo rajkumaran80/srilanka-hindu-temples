@@ -3,24 +3,19 @@ import './TempleDetail.css';
 
 // Helper function to get the correct API base URL based on platform
 const getApiBaseUrl = async () => {
-  /*if (!Capacitor.isNativePlatform()) {
-    // Web platform - use localhost
-    return 'http://localhost:8080';
+  // Use the deployed Vercel API
+  return 'https://srilanka-hindu-temples-api.vercel.app';
+
+
+  /*
+  if (!Capacitor.isNativePlatform()) {
+    // Web platform - use localhost backend
+    return 'http://localhost:3001';
   }
 
-  const deviceInfo = await Device.getInfo();
-  if (deviceInfo.platform === 'android') {
-    // Android emulator special IP to reach host machine
-    return 'http://10.0.2.2:8080';
-  } else if (deviceInfo.platform === 'ios') {
-    // iOS simulator - need to get host machine IP
-    return 'http://192.168.1.159:8080';
-  }*/
-
-  // Fallback
- // return 'http://localhost:8080'
-   return 'https://srilanka-hindu-temples-api.vercel.app';
-
+  // For mobile apps, use the Vercel deployment
+  return 'https://srilanka-hindu-temples-api.vercel.app';
+  */
 };
 
 const TempleDetail = ({ temple, onClose }) => {
@@ -141,6 +136,59 @@ const TempleDetail = ({ temple, onClose }) => {
     setUploadMessageType('');
   };
 
+  const compressImage = (file, maxSizeKB = 20) => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate new dimensions (max 800px width/height)
+        let { width, height } = img;
+        const maxDimension = 800;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Try different quality levels until under maxSizeKB
+        let quality = 0.9;
+        let compressedDataUrl;
+
+        do {
+          compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          const sizeInBytes = (compressedDataUrl.length * 3) / 4; // Approximate base64 to bytes
+          const sizeInKB = sizeInBytes / 1024;
+
+          if (sizeInKB <= maxSizeKB || quality <= 0.1) {
+            break;
+          }
+
+          quality -= 0.1;
+        } while (quality > 0.1);
+
+        resolve(compressedDataUrl);
+      };
+
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadPhotos = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -150,22 +198,20 @@ const TempleDetail = ({ temple, onClose }) => {
 
     try {
       const file = selectedFiles[0];
-      const base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+
+      // Compress the image to under 20KB
+      setUploadMessage('Compressing image...');
+      const compressedDataUrl = await compressImage(file, 20);
 
       // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-      const base64String = base64Data.split(',')[1];
+      const base64String = compressedDataUrl.split(',')[1];
 
       const payload = {
         templeId: temple._id || temple.id,
         photo: base64String
       };
 
-      const response = await fetch(`http://localhost:8080/api/upload_temple_photo.ts`, {
+      const response = await fetch(`${apiBaseUrl}/api/upload_temple_photo.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,12 +227,42 @@ const TempleDetail = ({ temple, onClose }) => {
         const fileInput = document.getElementById('photo-upload');
         if (fileInput) fileInput.value = '';
       } else {
-        setUploadMessage('Failed to upload photo. Please try again.');
+        // Try to get the actual error message from the response
+        let errorMessage = 'Failed to upload photo. Please try again.';
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = `Error: ${errorData.error}`;
+          } else if (errorData.message) {
+            errorMessage = `Error: ${errorData.message}`;
+          } else if (errorData.details) {
+            errorMessage = `Error: ${errorData.details}`;
+          } else {
+            // Show the full error response for debugging
+            errorMessage = `Server error: ${JSON.stringify(errorData)}`;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response as JSON
+          try {
+            const textResponse = await response.text();
+            if (textResponse) {
+              errorMessage = `Server response: ${textResponse}`;
+            } else if (response.statusText) {
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            } else {
+              errorMessage = `HTTP ${response.status} error`;
+            }
+          } catch (textError) {
+            // Last resort - use status information
+            errorMessage = `Network error: HTTP ${response.status}`;
+          }
+        }
+        setUploadMessage(errorMessage);
         setUploadMessageType('error');
       }
     } catch (error) {
       console.error('Error uploading photo:', error);
-      setUploadMessage('Error uploading photo. Please try again.');
+      setUploadMessage('Error uploading photo.' + error);
       setUploadMessageType('error');
     } finally {
       setUploadingPhotos(false);
