@@ -43,6 +43,7 @@ const selectedIcon = new L.Icon({
 });
 
 import TempleDetail from './TempleDetail';
+import { API_BASE_URL } from '../Constants';
 
 // Helper function to get the correct API base URL based on platform
 const getApiBaseUrl = async () => {
@@ -362,8 +363,7 @@ const MapComponent = () => {
 
   useEffect(() => {
     const initializeApi = async () => {
-      const baseUrl = await getApiBaseUrl();
-      setApiBaseUrl(baseUrl);
+      setApiBaseUrl(API_BASE_URL);
     };
     initializeApi();
   }, []);

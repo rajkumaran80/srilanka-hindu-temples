@@ -203,18 +203,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     const blobName = `${folderName}/${finalName}`;
 
-    console.log(`Generating presigned URL for temple ${templeId} (folder '${folderName}') blob: ${blobName}`);
+    if (fileData) {
+      // Upload file directly to Azure
+      console.log(`Uploading file for temple ${templeId} (folder '${folderName}') blob: ${blobName}`);
 
-    const presignedUrl = await generatePresignedUrl(AZURE_STORAGE_CONTAINER, blobName);
+      const blobServiceClient = await createBlobServiceClient();
+      const containerClient = blobServiceClient.getContainerClient(AZURE_STORAGE_CONTAINER);
+      await containerClient.createIfNotExists();
 
-    res.status(200).json({
-      ok: true,
-      presignedUrl,
-      blobName,
-      container: AZURE_STORAGE_CONTAINER,
-      templeName: templeNameRaw,
-      fileName: finalName
-    });
+      const blobClient = containerClient.getBlockBlobClient(blobName);
+
+      // Decode base64 file data
+      const buffer = Buffer.from(fileData, 'base64');
+
+      await blobClient.upload(buffer, buffer.length, {
+        blobHTTPHeaders: {
+          blobContentType: fileType
+        }
+      });
+
+      res.status(200).json({
+        ok: true,
+        blobName,
+        container: AZURE_STORAGE_CONTAINER,
+        templeName: templeNameRaw,
+        fileName: finalName,
+        url: blobClient.url
+      });
+    } else {
+      // Generate presigned URL
+      console.log(`Generating presigned URL for temple ${templeId} (folder '${folderName}') blob: ${blobName}`);
+
+      const presignedUrl = await generatePresignedUrl(AZURE_STORAGE_CONTAINER, blobName);
+
+      res.status(200).json({
+        ok: true,
+        presignedUrl,
+        blobName,
+        container: AZURE_STORAGE_CONTAINER,
+        templeName: templeNameRaw,
+        fileName: finalName
+      });
+    }
   } catch (err: any) {
     console.error("upload_temple_photo_azure error:", err);
     const msg = err?.message || "internal error";

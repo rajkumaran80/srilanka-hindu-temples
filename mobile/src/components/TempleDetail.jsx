@@ -1,26 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './TempleDetail.css';
-
-// Helper function to get the correct API base URL based on platform
-const getApiBaseUrl = async () => {
-  if (!Capacitor.isNativePlatform()) {
-    // Web platform - use localhost
-    return 'http://localhost:8080';
-  }
-
-  const deviceInfo = await Device.getInfo();
-  if (deviceInfo.platform === 'android') {
-    // Android emulator special IP to reach host machine
-    return 'http://10.0.2.2:8080';
-  } else if (deviceInfo.platform === 'ios') {
-    // iOS simulator - need to get host machine IP
-    return 'http://192.168.1.159:8080';
-  }
-
-  // Fallback
-  return 'https://srilanka-hindu-temples-mobile.vercel.app';
-
-};
+import { API_BASE_URL } from '../Constants';
 
 const TempleDetail = ({ temple, onClose }) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -35,8 +15,7 @@ const TempleDetail = ({ temple, onClose }) => {
 
     useEffect(() => {
       const initializeApi = async () => {
-        const baseUrl = await getApiBaseUrl();
-        setApiBaseUrl(baseUrl);
+        setApiBaseUrl(API_BASE_URL);
       };
       initializeApi();
     }, []);
