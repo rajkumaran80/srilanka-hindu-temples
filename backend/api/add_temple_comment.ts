@@ -1,4 +1,4 @@
-import { MongoClient, Db } from "mongodb";
+import { MongoClient, Db, ObjectId } from "mongodb";
 
 // Define interfaces for the API
 interface CommentData {
@@ -8,10 +8,7 @@ interface CommentData {
 }
 
 interface TempleDocument {
-  _id?: {
-    $oid: string;
-  };
-  id?: string;
+  _id: ObjectId;
   osm_id?: number;
   comments?: CommentData[];
   updated_at?: Date;

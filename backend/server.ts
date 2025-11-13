@@ -47,8 +47,9 @@ type VercelHandler = (req: VercelRequest, res: VercelResponse) => Promise<void> 
 
 // Import the Vercel serverless functions
 const templesInitialHandler: VercelHandler = (await import('./api/temples_initial.js')).default;
-const templesSearchHandler: VercelHandler = (await import('./api/temples_search.js')).default;
+const templesLoadHandler: VercelHandler = (await import('./api/temples_load.js')).default;
 const templesSearchByNameHandler: VercelHandler = (await import('./api/temples_search_by_name.js')).default;
+const templesSearchByIdHandler: VercelHandler = (await import('./api/temples_search_by_id.js')).default;
 const addTempleCommentHandler: VercelHandler = (await import('./api/add_temple_comment.js')).default;
 const addSuggestedTempleNameHandler: VercelHandler = (await import('./api/add_suggested_temple_name.js')).default;
 const uploadTemplePhotoHandler: VercelHandler = (await import('./api/upload_temple_photo.js')).default;
@@ -97,16 +98,22 @@ app.get('/api/temples_initial.ts', (req, res) => {
   templesInitialHandler(vercelReq, vercelRes);
 });
 
-app.get('/api/temples_search.ts', (req, res) => {
+app.get('/api/temples_load.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
   const vercelRes = createVercelResponse(res);
-  templesSearchHandler(vercelReq, vercelRes);
+  templesLoadHandler(vercelReq, vercelRes);
 });
 
 app.get('/api/temples_search_by_name.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
   const vercelRes = createVercelResponse(res);
   templesSearchByNameHandler(vercelReq, vercelRes);
+});
+
+app.get('/api/temples_search_by_id.ts', (req, res) => {
+  const vercelReq = createVercelRequest(req);
+  const vercelRes = createVercelResponse(res);
+  templesSearchByIdHandler(vercelReq, vercelRes);
 });
 
 app.post('/api/add_temple_comment.ts', (req, res) => {
@@ -153,6 +160,7 @@ app.listen(PORT, () => {
   console.log(`   GET /api/temples_filter?district=<district> - Filter temples by district`);
   console.log(`   GET /api/temples_initial - Get first 5 temples`);
   console.log(`   GET /api/temples_search?north=&south=&east=&west=&limit= - Search by geographic bounds`);
+  console.log(`   GET /api/temples_search_by_name?name=<name> - Search temples by name`);
   console.log(`   GET /api/temples_search_by_name?name=<name> - Search temples by name`);
   console.log(`   POST /api/add_temple_comment - Add comment to temple`);
   console.log(`   POST /api/add_suggested_temple_name - Add suggested name to temple`);

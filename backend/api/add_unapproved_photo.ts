@@ -1,4 +1,4 @@
-import { MongoClient, Db } from "mongodb";
+import { MongoClient, Db, ObjectId } from "mongodb";
 
 // Define interfaces for the API
 interface PhotoData {
@@ -8,10 +8,7 @@ interface PhotoData {
 }
 
 interface TempleDocument {
-  _id?: {
-    $oid: string;
-  };
-  id?: string;
+  _id: ObjectId;
   osm_id?: number;
   unapproved_photos?: string[];
   updated_at?: Date;

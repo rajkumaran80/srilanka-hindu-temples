@@ -1,11 +1,8 @@
-import { MongoClient, Db } from "mongodb";
+import { MongoClient, Db, ObjectId } from "mongodb";
 
 // Define interfaces for the API
 interface TempleDocument {
-  _id?: {
-    $oid: string;
-  };
-  id?: string;
+  _id: ObjectId;
   osm_id?: number;
   added_at?: {
     $date: string;
@@ -29,7 +26,6 @@ interface TempleDocument {
 }
 
 interface Temple {
-  _id?: string;
   id?: string;
   osm_id?: number;
   name?: string;
@@ -40,17 +36,6 @@ interface Temple {
   photos?: string[];
   description?: string;
   [key: string]: any;
-}
-
-// Helper function to extract ID from MongoDB document
-function extractId(doc: TempleDocument): string {
-  if (doc.id) return doc.id;
-  if (doc._id) {
-    if (typeof doc._id === 'string') return doc._id;
-    if (doc._id.$oid) return doc._id.$oid;
-  }
-  // Fallback to osm_id as string if no other ID is available
-  return doc.osm_id?.toString() || 'unknown';
 }
 
 // Helper function to build location string from address components
@@ -87,10 +72,8 @@ function buildLocationString(doc: TempleDocument): string {
 
 // Function to convert TempleDocument to Temple
 function convertTempleDocumentToTemple(doc: TempleDocument): Temple {
-  const id = extractId(doc);
   return {
-    _id: id,
-    id: id,
+    id: doc._id.toString(),
     osm_id: doc.osm_id,
     name: doc.temple_name || doc.name,
     location: buildLocationString(doc),

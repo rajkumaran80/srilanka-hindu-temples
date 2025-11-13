@@ -45,27 +45,6 @@ const selectedIcon = new L.Icon({
 import TempleDetail from './TempleDetail';
 import { API_BASE_URL } from '../Constants';
 
-// Helper function to get the correct API base URL based on platform
-const getApiBaseUrl = async () => {
-  if (!Capacitor.isNativePlatform()) {
-    // Web platform - use localhost
-    return 'http://localhost:8080';
-  }
-
-  const deviceInfo = await Device.getInfo();
-  if (deviceInfo.platform === 'android') {
-    // Android emulator special IP to reach host machine
-    return 'http://10.0.2.2:8080';
-  } else if (deviceInfo.platform === 'ios') {
-    // iOS simulator - need to get host machine IP
-    return 'http://192.168.1.159:8080';
-  }
-
-  // Fallback
-  return 'https://srilanka-hindu-temples-mobile.vercel.app';
-
-};
-
 // Component to handle map flying
 const MapController = ({ flyToPosition, onMapReady, onFlyToComplete, isFlyingRef }) => {
   const map = useMap();
@@ -185,7 +164,7 @@ const MapComponent = () => {
       }
 
       const response = await fetch(
-        `${apiBaseUrl}/api/temples_search.ts?north=${north}&south=${south}&east=${east}&west=${west}&limit=20`
+        `${apiBaseUrl}/api/temples_load.ts?north=${north}&south=${south}&east=${east}&west=${west}&limit=20`
       );
 
       if (response.ok) {
@@ -193,8 +172,8 @@ const MapComponent = () => {
 
         // Merge with existing temples, avoiding duplicates
         setTemples(prevTemples => {
-          const existingIds = new Set(prevTemples.map(t => t._id || t.id));
-          const newTemples = data.filter(temple => !existingIds.has(temple._id || temple.id));
+          const existingIds = new Set(prevTemples.map(t => t.id));
+          const newTemples = data.filter(temple => !existingIds.has(temple.id));
           return [...prevTemples, ...newTemples];
         });
 
@@ -235,8 +214,25 @@ const MapComponent = () => {
     }
   };
 
+  const fetchTempleById = async (templeId) => {
+    try {
+      // Use the search by name API with the temple ID as name to get fresh data
+      // Since we want exact match, we'll search and find the temple with matching ID
+      const response = await fetch(`${apiBaseUrl}/api/temples_search_by_id.ts?id=${encodeURIComponent(templeId)}`);
+      if (response.ok) {
+        const results = await response.json();
+        // Find the temple with matching ID
+        const temple = results.find(t => (t.id) === templeId);
+        return temple;
+      }
+    } catch (error) {
+      console.error('Error fetching temple by ID:', error);
+    }
+    return null;
+  };
+
   const selectTemple = (temple) => {
-    const templeId = temple._id || temple.id;
+    const templeId = temple.id;
     setSelectedMarkerId(templeId);
     isFlyingRef.current = true;
     setFlyToPosition([temple.latitude, temple.longitude]);
@@ -246,7 +242,7 @@ const MapComponent = () => {
     setMapInteractionByUser(false);
     // Ensure the temple is in the temples list for marker rendering
     setTemples(prev => {
-      const exists = prev.some(t => (t._id || t.id) === templeId);
+      const exists = prev.some(t => t.id === templeId);
       if (!exists) {
         return [...prev, temple];
       }
@@ -431,7 +427,7 @@ const MapComponent = () => {
   try {
     console.log('Rendering MapComponent, temples:', temples, 'loading:', loading);
 
-    const idFor = (temple) => String(temple._id ?? temple.id ?? '');
+    const idFor = (temple) => String(temple.id ?? '');
 
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -455,7 +451,7 @@ const MapComponent = () => {
             {showDropdown && (
               <ul style={{ margin: '0 5px', padding: 0, listStyle: 'none', background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 1000, width: 'calc(100% - 10px)', top: '40px' }}>
                 {searchResults.map((temple) => (
-                  <li key={temple._id} onClick={() => selectTemple(temple)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee', textAlign: 'left' }}>
+                  <li key={temple.id} onClick={() => selectTemple(temple)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee', textAlign: 'left' }}>
                     <div style={{ fontWeight: 'bold' }}>{temple.name}</div>
                     {temple.location && <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{temple.location}</div>}
                   </li>
@@ -477,10 +473,10 @@ const MapComponent = () => {
               />
               {temples.map((temple) => (
               <Marker
-                key={temple._id || temple.id}
+                key={temple.id}
                 position={[temple.latitude, temple.longitude]}
-                ref={(el) => { markersRef.current[temple._id || temple.id] = el; }}
-                className={selectedMarkerId === (temple._id || temple.id) ? 'selected-marker' : ''}
+                ref={(el) => { markersRef.current[temple.id] = el; }}
+                className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
                 eventHandlers={{
                   click: () => setSelectedMarkerId(idFor(temple)),
                 }}
@@ -491,8 +487,10 @@ const MapComponent = () => {
                     <h3 style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{temple.name}</h3>
                     <p style={{ margin: '0 0 5px 0' }}>{temple.location}</p>
                     <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
-                      <button onClick={() => {
-                        setSelectedTemple(temple);
+                      <button onClick={async () => {
+                        // Fetch fresh temple data before opening details
+                        const freshTemple = await fetchTempleById(idFor(temple));
+                        setSelectedTemple(freshTemple || temple);
                       }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>View Details</button>
                       <button onClick={() => {
                         setShowCommentForm(true);

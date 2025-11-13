@@ -26,6 +26,7 @@ interface TempleDocument {
 }
 
 interface Temple {
+  _id?: string;
   id?: string;
   osm_id?: number;
   name?: string;
@@ -105,9 +106,16 @@ interface VercelRequest {
   url: string;
 }
 
+interface SearchQuery {
+  name?: { $not: { $regex: string; $options: string } };
+  latitude?: { $gte: number; $lte: number };
+  longitude?: { $gte: number; $lte: number };
+}
+
 // Global variable to cache the MongoDB client for reuse between function calls
-const MONGODB_URI: string = process.env.MONGODB_URI!;
-const DATABASE: string = process.env.DATABASE!;
+const MONGODB_URI: string = process.env.MONGO_URI || process.env.MONGODB_URI || '';
+const DATABASE: string = process.env.DATABASE || '';
+
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGO_URI or MONGODB_URI environment variable inside .env or Vercel environment variables');
@@ -147,9 +155,7 @@ async function connectToDatabase() {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  const { name } = req.query as { name?: string };
-
-  console.log('Temples Search by Name API handler called');
+  console.log('Temples Search API handler called');
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
   console.log('Request query params:', req.query);
@@ -177,25 +183,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     console.log('Connecting to database...');
     const { db } = await connectToDatabase();
 
-    if (!name || name.trim() === '') {
-      console.log('No name parameter provided');
-      return res.status(400).json({ error: 'Name parameter is required' });
+    const { limit, north, south, east, west } = req.query;
+
+    const query: SearchQuery = {};
+    let queryLimit = limit ? parseInt(limit as string, 10) : undefined;
+
+    // Always exclude temples whose names start with "unnamed"
+    query.name = { $not: { $regex: '^unnamed', $options: 'i' } };
+
+    // If geographic bounds are provided, filter by them
+    if (north && south && east && west) {
+      query.latitude = {
+        $gte: parseFloat(south as string),
+        $lte: parseFloat(north as string)
+      };
+      query.longitude = {
+        $gte: parseFloat(west as string),
+        $lte: parseFloat(east as string)
+      };
+      console.log('Applied geographic bounding box filter:', query);
     }
 
-    console.log(`Searching temples with name containing: ${name}`);
-    // Search for temples where name contains the search term (case-insensitive)
-    const query = {
-      $or: [
-        { name: { $regex: name, $options: 'i' } },
-        { "tags.name": { $regex: name, $options: 'i' } }
-      ]
-    };
+    // Query the MongoDB collection with proper sorting and limiting
+    let templeDocuments: TempleDocument[] = [];
 
-    console.log('MongoDB query:', JSON.stringify(query));
+    if (queryLimit) {
+      console.log(`Querying temples collection with geographic query and limit ${queryLimit}...`);
+      templeDocuments = await db.collection<TempleDocument>("temples")
+        .find(query)
+        .sort({ id: -1 })
+        .limit(queryLimit)
+        .toArray();
+    } else {
+      console.log('Querying temples collection with geographic query...');
+      templeDocuments = await db.collection<TempleDocument>("temples")
+        .find(query)
+        .sort({ id: -1 })
+        .toArray();
+    }
 
-    const templeDocuments: TempleDocument[] = await db.collection<TempleDocument>("temples").find(query).toArray();
-
-    console.log(`Found ${templeDocuments.length} temple documents matching name search: ${name}`);
+    console.log(`Found ${templeDocuments.length} temple documents matching search criteria`);
     console.log('Converting to Temple format...');
     const temples: Temple[] = templeDocuments.map(convertTempleDocumentToTemple);
 
@@ -203,13 +230,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     console.log('Sending successful response');
     res.status(200).json(temples);
   } catch (err: unknown) {
-    console.error('==================== ERROR IN TEMPLE SEARCH BY NAME API ====================');
+    console.error('==================== ERROR IN TEMPLE SEARCH API ====================');
     const error = err as any; // Type assertion for error handling
     console.error('Error name:', error?.name);
     console.error('Error message:', error?.message);
     console.error('Error stack:', error?.stack);
     console.error('Error code:', error?.code);
-    console.error('Request query name:', name);
     console.error('MONGO_URI exists:', !!process.env.MONGO_URI);
     console.error('MONGODB_URI exists:', !!process.env.MONGODB_URI);
     console.error('===================================================================');

@@ -8,10 +8,7 @@ interface SuggestedNameData {
 }
 
 interface TempleDocument {
-  _id?: {
-    $oid: string;
-  };
-  id?: string;
+  _id: ObjectId;
   osm_id?: number;
   suggestedNames?: SuggestedNameData[];
   updated_at?: Date;

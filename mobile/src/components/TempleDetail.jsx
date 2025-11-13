@@ -172,6 +172,19 @@ const TempleDetail = ({ temple, onClose }) => {
     });
   };
 
+  const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000, onRetry) => {
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (attempt > maxRetries) throw error;
+        if (onRetry) onRetry(attempt + 1);
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  };
+
   const uploadPhotos = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -198,7 +211,7 @@ const TempleDetail = ({ temple, onClose }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          templeId: temple._id || temple.id,
+          templeId: temple.id,
           fileType: compressedBlob.type || 'image/jpeg'
         }),
       });
@@ -213,22 +226,29 @@ const TempleDetail = ({ temple, onClose }) => {
       const presignedData = await presignedResponse.json();
       const { presignedUrl, blobName } = presignedData;
 
-      // Step 3: Upload photo directly to Azure blob storage
+      // Step 3: Upload photo directly to Azure blob storage with retry logic
       setUploadMessage('Uploading photo...');
-      const uploadResponse = await fetch(presignedUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': compressedBlob.type || 'image/jpeg',
-          'x-ms-blob-type': 'BlockBlob',
+      const uploadResponse = await retryWithBackoff(
+        async () => {
+          const response = await fetch(presignedUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': compressedBlob.type || 'image/jpeg',
+              'x-ms-blob-type': 'BlockBlob',
+            },
+            body: compressedBlob,
+          });
+          if (!response.ok) {
+            throw new Error(`Upload failed with status ${response.status}`);
+          }
+          return response;
         },
-        body: compressedBlob,
-      });
-
-      if (!uploadResponse.ok) {
-        setUploadMessage('Failed to upload photo to storage. Please try again.');
-        setUploadMessageType('error');
-        return;
-      }
+        3, // maxRetries
+        1000, // baseDelay
+        (attempt) => {
+          setUploadMessage(`Retrying upload (attempt ${attempt}/4)...`);
+        }
+      );
 
       // Step 4: Add the photo URL to unapproved_photos
       setUploadMessage('Adding to review queue...');
@@ -243,7 +263,7 @@ const TempleDetail = ({ temple, onClose }) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            templeId: temple._id || temple.id,
+            templeId: temple.id,
             photoName: blobUrl // Use the full blob URL
           }),
         });
