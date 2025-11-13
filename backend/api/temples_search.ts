@@ -111,6 +111,7 @@ interface VercelResponse {
   status: (code: number) => StatusResponse;
   json: (data: any) => void;
   headersSent?: boolean;
+  setHeader: (name: string, value: string) => void;
 }
 
 interface VercelRequest {
@@ -174,6 +175,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
   console.log('Request query params:', req.query);
+
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,HEAD,POST");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    res.setHeader("Access-Control-Max-Age", "600");
+    res.status(200).end();
+    return;
+  }
 
   try {
     console.log('Checking environment variables...');

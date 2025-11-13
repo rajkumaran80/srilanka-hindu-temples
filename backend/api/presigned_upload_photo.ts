@@ -136,6 +136,16 @@ async function generatePresignedUrl(containerName: string, blobName: string): Pr
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
+    // Handle CORS preflight requests
+    if (req.method === "OPTIONS") {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,HEAD,POST");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+      res.setHeader("Access-Control-Max-Age", "600");
+      res.status(200).end();
+      return;
+    }
+
     if (req.method !== "POST") {
       res.setHeader("Allow", "POST");
       res.status(405).json({ ok: false, error: "Method not allowed, use POST" });
