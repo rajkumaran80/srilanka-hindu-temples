@@ -3,19 +3,23 @@ import './TempleDetail.css';
 
 // Helper function to get the correct API base URL based on platform
 const getApiBaseUrl = async () => {
-  // Use the deployed Vercel API
-  return 'https://srilanka-hindu-temples-api.vercel.app';
-
-
-  /*
   if (!Capacitor.isNativePlatform()) {
-    // Web platform - use localhost backend
-    return 'http://localhost:3001';
+    // Web platform - use localhost
+    return 'http://localhost:8080';
   }
 
-  // For mobile apps, use the Vercel deployment
-  return 'https://srilanka-hindu-temples-api.vercel.app';
-  */
+  const deviceInfo = await Device.getInfo();
+  if (deviceInfo.platform === 'android') {
+    // Android emulator special IP to reach host machine
+    return 'http://10.0.2.2:8080';
+  } else if (deviceInfo.platform === 'ios') {
+    // iOS simulator - need to get host machine IP
+    return 'http://192.168.1.159:8080';
+  }
+
+  // Fallback
+  return 'https://srilanka-hindu-temples-mobile.vercel.app';
+
 };
 
 const TempleDetail = ({ temple, onClose }) => {
@@ -199,70 +203,94 @@ const TempleDetail = ({ temple, onClose }) => {
     try {
       const file = selectedFiles[0];
 
-      // Compress the image to under 20KB
+      // Step 1: Compress the image to under 20KB
       setUploadMessage('Compressing image...');
       const compressedDataUrl = await compressImage(file, 20);
 
-      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-      const base64String = compressedDataUrl.split(',')[1];
+      // Convert data URL to blob for upload
+      const response = await fetch(compressedDataUrl);
+      const compressedBlob = await response.blob();
 
-      const payload = {
-        templeId: temple._id || temple.id,
-        photo: base64String
-      };
-
-      const response = await fetch(`${apiBaseUrl}/api/upload_temple_photo.ts`, {
+      // Step 2: Get presigned URL from Azure
+      setUploadMessage('Getting upload URL...');
+      const presignedResponse = await fetch(`${apiBaseUrl}/api/presigned_upload_photo.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          templeId: temple._id || temple.id,
+          fileType: compressedBlob.type || 'image/jpeg'
+        }),
       });
 
-      if (response.ok) {
-        setUploadMessage('Photo uploaded successfully!');
-        setUploadMessageType('success');
-        setSelectedFiles([]);
-        // Reset file input
-        const fileInput = document.getElementById('photo-upload');
-        if (fileInput) fileInput.value = '';
-      } else {
-        // Try to get the actual error message from the response
-        let errorMessage = 'Failed to upload photo. Please try again.';
-        try {
-          const errorData = await response.json();
-          if (errorData.error) {
-            errorMessage = `Error: ${errorData.error}`;
-          } else if (errorData.message) {
-            errorMessage = `Error: ${errorData.message}`;
-          } else if (errorData.details) {
-            errorMessage = `Error: ${errorData.details}`;
-          } else {
-            // Show the full error response for debugging
-            errorMessage = `Server error: ${JSON.stringify(errorData)}`;
-          }
-        } catch (parseError) {
-          // If we can't parse the error response as JSON
-          try {
-            const textResponse = await response.text();
-            if (textResponse) {
-              errorMessage = `Server response: ${textResponse}`;
-            } else if (response.statusText) {
-              errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-            } else {
-              errorMessage = `HTTP ${response.status} error`;
-            }
-          } catch (textError) {
-            // Last resort - use status information
-            errorMessage = `Network error: HTTP ${response.status}`;
-          }
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json().catch(() => ({}));
+        setUploadMessage(`Failed to get upload URL: ${errorData.error || 'Unknown error'}`);
+        setUploadMessageType('error');
+        return;
+      }
+
+      const presignedData = await presignedResponse.json();
+      const { presignedUrl, blobName } = presignedData;
+
+      // Step 3: Upload photo directly to Azure blob storage
+      setUploadMessage('Uploading photo...');
+      const uploadResponse = await fetch(presignedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': compressedBlob.type || 'image/jpeg',
+          'x-ms-blob-type': 'BlockBlob',
+        },
+        body: compressedBlob,
+      });
+
+      if (!uploadResponse.ok) {
+        setUploadMessage('Failed to upload photo to storage. Please try again.');
+        setUploadMessageType('error');
+        return;
+      }
+
+      // Step 4: Add the photo URL to unapproved_photos
+      setUploadMessage('Adding to review queue...');
+
+      // Construct the full blob URL (without SAS token for permanent access)
+      const blobUrl = presignedUrl.split('?')[0]; // Remove SAS token
+
+      try {
+        const unapprovedResponse = await fetch(`${apiBaseUrl}/api/add_unapproved_photo.ts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            templeId: temple._id || temple.id,
+            photoName: blobUrl // Use the full blob URL
+          }),
+        });
+
+        if (unapprovedResponse.ok) {
+          setUploadMessage('Photo uploaded and added to review queue successfully!');
+          setUploadMessageType('success');
+        } else {
+          // Photo uploaded to storage but failed to add to unapproved_photos
+          const errorData = await unapprovedResponse.json().catch(() => ({}));
+          setUploadMessage(`Photo uploaded but failed to add to review queue: ${errorData.error || 'Unknown error'}`);
+          setUploadMessageType('error');
         }
-        setUploadMessage(errorMessage);
+      } catch (unapprovedError) {
+        // Photo uploaded to storage but failed to call unapproved API
+        setUploadMessage('Photo uploaded but failed to add to review queue. Please try again.');
         setUploadMessageType('error');
       }
+
+      setSelectedFiles([]);
+      // Reset file input
+      const fileInput = document.getElementById('photo-upload');
+      if (fileInput) fileInput.value = '';
     } catch (error) {
       console.error('Error uploading photo:', error);
-      setUploadMessage('Error uploading photo.' + error);
+      setUploadMessage(`Error uploading photo: ${error.message || 'Unknown error'}`);
       setUploadMessageType('error');
     } finally {
       setUploadingPhotos(false);

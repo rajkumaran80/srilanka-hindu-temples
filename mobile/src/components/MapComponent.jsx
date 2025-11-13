@@ -46,7 +46,7 @@ import TempleDetail from './TempleDetail';
 
 // Helper function to get the correct API base URL based on platform
 const getApiBaseUrl = async () => {
-  /*if (!Capacitor.isNativePlatform()) {
+  if (!Capacitor.isNativePlatform()) {
     // Web platform - use localhost
     return 'http://localhost:8080';
   }
@@ -58,11 +58,10 @@ const getApiBaseUrl = async () => {
   } else if (deviceInfo.platform === 'ios') {
     // iOS simulator - need to get host machine IP
     return 'http://192.168.1.159:8080';
-  }*/
+  }
 
   // Fallback
-//  return 'http://localhost:8080'
-   return 'https://srilanka-hindu-temples-api.vercel.app';
+  return 'https://srilanka-hindu-temples-mobile.vercel.app';
 
 };
 
