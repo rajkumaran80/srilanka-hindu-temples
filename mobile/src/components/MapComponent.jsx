@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import { Capacitor } from '@capacitor/core';
 import { Device } from '@capacitor/device';
+import OfflineTileLayer from './OfflineTileLayer';
 import 'leaflet/dist/leaflet.css';
 
 // Import marker icons for mobile compatibility
@@ -126,10 +127,16 @@ const MapComponent = () => {
   const [submittingSuggestedName, setSubmittingSuggestedName] = useState(false);
   const [suggestNameMessage, setSuggestNameMessage] = useState('');
   const [suggestNameMessageType, setSuggestNameMessageType] = useState(''); // 'success' or 'error'
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [cachedTilesCount, setCachedTilesCount] = useState(0);
+  const [showOfflineControls, setShowOfflineControls] = useState(false);
 
   const markersRef = useRef({});
   const mapRef = useRef(null);
   const isFlyingRef = useRef(false);
+  const tileLayerRef = useRef(null);
   const minZoomForBoundsLoading = 10; // Only load temples by bounds when zoomed in enough
 
   const fetchInitialTemples = async () => {
@@ -357,6 +364,59 @@ const MapComponent = () => {
     }
   };
 
+  // Offline functionality
+  const downloadMapArea = async () => {
+    if (!mapRef.current || !tileLayerRef.current) return;
+
+    setIsDownloading(true);
+    setDownloadProgress(0);
+
+    try {
+      const bounds = mapRef.current.getBounds();
+      const minZoom = Math.max(8, currentZoom - 2); // Download from current zoom - 2
+      const maxZoom = Math.min(16, currentZoom + 2); // Up to current zoom + 2
+
+      await tileLayerRef.current.preloadTiles(bounds, minZoom, maxZoom);
+
+      // Update cached tiles count
+      const count = await tileLayerRef.current.getCacheSize();
+      setCachedTilesCount(count);
+
+      setDownloadProgress(100);
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress(0);
+      }, 1000);
+    } catch (error) {
+      console.error('Error downloading map area:', error);
+      setIsDownloading(false);
+      setDownloadProgress(0);
+    }
+  };
+
+  const clearCache = async () => {
+    if (!tileLayerRef.current) return;
+
+    try {
+      await tileLayerRef.current.clearCache();
+      setCachedTilesCount(0);
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+    }
+  };
+
+  const updateOnlineStatus = () => {
+    setIsOnline(navigator.onLine);
+  };
+
+  const handleLayerReady = (layer) => {
+    tileLayerRef.current = layer;
+    // Update cache size on layer ready
+    if (layer.getCacheSize) {
+      layer.getCacheSize().then(count => setCachedTilesCount(count));
+    }
+  };
+
   useEffect(() => {
     const initializeApi = async () => {
       setApiBaseUrl(API_BASE_URL);
@@ -420,6 +480,17 @@ const MapComponent = () => {
     }
   }, [suggestNameMessage]);
 
+  // Online/offline status monitoring
+  useEffect(() => {
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
+
 
 
   const sriLankaCenter = [7.8731, 80.7718];
@@ -441,6 +512,106 @@ const MapComponent = () => {
         </style>
         {!loading && temples.length > 0 && (
           <>
+            {/* Status bar */}
+            <div style={{
+              position: 'absolute',
+              top: '5px',
+              right: '5px',
+              zIndex: 1000,
+              display: 'flex',
+              gap: '5px',
+              alignItems: 'center'
+            }}>
+              <div style={{
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                backgroundColor: isOnline ? '#d4edda' : '#f8d7da',
+                color: isOnline ? '#155724' : '#721c24',
+                border: `1px solid ${isOnline ? '#c3e6cb' : '#f5c6cb'}`
+              }}>
+                {isOnline ? 'Online' : 'Offline'}
+              </div>
+              <div style={{
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                backgroundColor: '#e9ecef',
+                color: '#495057',
+                border: '1px solid #ced4da'
+              }}>
+                {cachedTilesCount} tiles cached
+              </div>
+              <button
+                onClick={() => setShowOfflineControls(!showOfflineControls)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Offline
+              </button>
+            </div>
+
+            {/* Offline controls panel */}
+            {showOfflineControls && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '5px',
+                zIndex: 1000,
+                backgroundColor: 'white',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                padding: '10px',
+                minWidth: '200px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+              }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Offline Map Controls</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    onClick={downloadMapArea}
+                    disabled={isDownloading || !isOnline}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      backgroundColor: isDownloading ? '#ffc107' : '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      cursor: isDownloading || !isOnline ? 'not-allowed' : 'pointer',
+                      opacity: isDownloading || !isOnline ? 0.6 : 1
+                    }}
+                  >
+                    {isDownloading ? `Downloading... ${downloadProgress}%` : 'Download Current Area'}
+                  </button>
+                  <button
+                    onClick={clearCache}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Clear Cache ({cachedTilesCount} tiles)
+                  </button>
+                </div>
+                <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>
+                  Downloads tiles for zoom levels {Math.max(8, currentZoom - 2)}-{Math.min(16, currentZoom + 2)}
+                </div>
+              </div>
+            )}
+
             <input
               type="text"
               placeholder="Search temples by name..."
@@ -459,9 +630,10 @@ const MapComponent = () => {
               </ul>
             )}
             <MapContainer center={sriLankaCenter} zoom={7} zoomControl={false} style={{ height: '100%', width: '100%', flex: 1 }}>
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              <OfflineTileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                onLayerReady={handleLayerReady}
               />
               <MapController flyToPosition={flyToPosition} onMapReady={handleMapReady} onFlyToComplete={handleFlyToComplete} isFlyingRef={isFlyingRef} />
               <MapEventHandler
