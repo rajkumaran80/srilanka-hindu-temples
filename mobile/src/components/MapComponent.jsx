@@ -132,6 +132,8 @@ const MapComponent = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [cachedTilesCount, setCachedTilesCount] = useState(0);
   const [showOfflineControls, setShowOfflineControls] = useState(false);
+  const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const markersRef = useRef({});
   const mapRef = useRef(null);
@@ -139,20 +141,36 @@ const MapComponent = () => {
   const tileLayerRef = useRef(null);
   const minZoomForBoundsLoading = 10; // Only load temples by bounds when zoomed in enough
 
-  const fetchInitialTemples = async () => {
+  const fetchInitialTemples = async (isRetry = false) => {
+    if (isRetry) {
+      setIsRefreshing(true);
+    }
+
     try {
       const response = await fetch(`${apiBaseUrl}/api/temples_initial.ts`);
       if (response.ok) {
         const data = await response.json();
         setTemples(data);
+        setHasAttemptedInitialLoad(true);
       } else {
         throw new Error('API not available');
       }
     } catch (error) {
       console.error('Error fetching initial temples:', error);
+      setHasAttemptedInitialLoad(true);
     } finally {
       setLoading(false);
+      if (isRetry) {
+        setIsRefreshing(false);
+      }
     }
+  };
+
+  const refreshData = () => {
+    if (!isOnline) return;
+    setLoading(true);
+    setHasAttemptedInitialLoad(false);
+    fetchInitialTemples(true);
   };
 
   const fetchTemplesByBounds = async (bounds) => {
@@ -406,7 +424,16 @@ const MapComponent = () => {
   };
 
   const updateOnlineStatus = () => {
+    const wasOffline = !isOnline;
     setIsOnline(navigator.onLine);
+
+    // If we just came back online and haven't loaded data yet, try to load it
+    if (navigator.onLine && wasOffline && hasAttemptedInitialLoad && temples.length === 0) {
+      console.log('Came back online, retrying to load temple data...');
+      setLoading(true);
+      setHasAttemptedInitialLoad(false);
+      fetchInitialTemples();
+    }
   };
 
   const handleLayerReady = (layer) => {
@@ -495,44 +522,48 @@ const MapComponent = () => {
 
   const sriLankaCenter = [7.8731, 80.7718];
 
-  try {
-    console.log('Rendering MapComponent, temples:', temples, 'loading:', loading);
+  console.log('Rendering MapComponent, temples:', temples, 'loading:', loading);
 
-    const idFor = (temple) => String(temple.id ?? '');
+  const idFor = (temple) => String(temple.id ?? '');
 
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <style>
           {`
             .selected-marker img {
               box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
               border-radius: 50%;
             }
+            .leaflet-container {
+              height: 100% !important;
+              width: 100% !important;
+            }
           `}
         </style>
-        {!loading && temples.length > 0 && (
-          <>
-            {/* Status bar */}
+      {!loading && (
+        <>
+          {/* Status bar */}
+          <div style={{
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            zIndex: 1000,
+            display: 'flex',
+            gap: '5px',
+            alignItems: 'center'
+          }}>
             <div style={{
-              position: 'absolute',
-              top: '5px',
-              right: '5px',
-              zIndex: 1000,
-              display: 'flex',
-              gap: '5px',
-              alignItems: 'center'
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              backgroundColor: isOnline ? '#d4edda' : '#f8d7da',
+              color: isOnline ? '#155724' : '#721c24',
+              border: `1px solid ${isOnline ? '#c3e6cb' : '#f5c6cb'}`
             }}>
-              <div style={{
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                backgroundColor: isOnline ? '#d4edda' : '#f8d7da',
-                color: isOnline ? '#155724' : '#721c24',
-                border: `1px solid ${isOnline ? '#c3e6cb' : '#f5c6cb'}`
-              }}>
-                {isOnline ? 'Online' : 'Offline'}
-              </div>
+              {isOnline ? 'Online' : 'Offline'}
+            </div>
+            {temples.length > 0 && (
               <div style={{
                 padding: '4px 8px',
                 borderRadius: '4px',
@@ -543,6 +574,8 @@ const MapComponent = () => {
               }}>
                 {cachedTilesCount} tiles cached
               </div>
+            )}
+            {temples.length > 0 && (
               <button
                 onClick={() => setShowOfflineControls(!showOfflineControls)}
                 style={{
@@ -557,8 +590,49 @@ const MapComponent = () => {
               >
                 Offline
               </button>
-            </div>
+            )}
+          </div>
 
+          {/* Offline message when no data and offline */}
+          {!loading && hasAttemptedInitialLoad && temples.length === 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              maxWidth: '300px',
+              zIndex: 1000
+            }}>
+              <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>No Internet Connection</h3>
+              <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '14px' }}>
+                Unable to load temple data. Please check your connection and try again.
+              </p>
+              <button
+                onClick={refreshData}
+                disabled={!isOnline || isRefreshing}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  backgroundColor: (!isOnline || isRefreshing) ? '#6c757d' : '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  cursor: (!isOnline || isRefreshing) ? 'not-allowed' : 'pointer',
+                  opacity: (!isOnline || isRefreshing) ? 0.6 : 1
+                }}
+              >
+                {isRefreshing ? 'Refreshing...' : isOnline ? 'Refresh' : 'Waiting for connection...'}
+              </button>
+            </div>
+          )}
+
+          {/* Always show map and search functionality */}
+          <>
             {/* Offline controls panel */}
             {showOfflineControls && (
               <div style={{
@@ -806,20 +880,17 @@ const MapComponent = () => {
               </Marker>
             ))}
           </MapContainer>
-          </>
-        )}
+        </>
         {selectedTemple && (
           <TempleDetail
             temple={selectedTemple}
             onClose={() => setSelectedTemple(null)}
           />
         )}
-      </div>
-    );
-  } catch (error) {
-    console.error('Error rendering MapComponent:', error);
-    return <div>Error loading map: {error.message}</div>;
-  }
+      </>
+    )}
+  </div>
+  );
 };
 
 export default MapComponent;
