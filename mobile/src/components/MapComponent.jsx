@@ -631,258 +631,256 @@ const MapComponent = () => {
             </div>
           )}
 
-          {/* Show map only when we have data */}
-          {temples.length > 0 && (
-            <>
-              {/* Offline controls panel */}
-              {showOfflineControls && (
-                <div style={{
-                  position: 'absolute',
-                  top: '50px',
-                  right: '5px',
-                  zIndex: 1000,
-                  backgroundColor: 'white',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  padding: '10px',
-                  minWidth: '200px',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Offline Map Controls</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button
-                      onClick={downloadMapArea}
-                      disabled={isDownloading || !isOnline}
-                      style={{
-                        padding: '8px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        backgroundColor: isDownloading ? '#ffc107' : '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        cursor: isDownloading || !isOnline ? 'not-allowed' : 'pointer',
-                        opacity: isDownloading || !isOnline ? 0.6 : 1
-                      }}
-                    >
-                      {isDownloading ? `Downloading... ${downloadProgress}%` : 'Download Current Area'}
-                    </button>
-                    <button
-                      onClick={clearCache}
-                      style={{
-                        padding: '8px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Clear Cache ({cachedTilesCount} tiles)
-                    </button>
-                  </div>
-                  <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>
-                    Downloads tiles for zoom levels {Math.max(8, currentZoom - 2)}-{Math.min(16, currentZoom + 2)}
-                  </div>
+          {/* Always show map and search functionality */}
+          <>
+            {/* Offline controls panel */}
+            {showOfflineControls && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '5px',
+                zIndex: 1000,
+                backgroundColor: 'white',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                padding: '10px',
+                minWidth: '200px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+              }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Offline Map Controls</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    onClick={downloadMapArea}
+                    disabled={isDownloading || !isOnline}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      backgroundColor: isDownloading ? '#ffc107' : '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      cursor: isDownloading || !isOnline ? 'not-allowed' : 'pointer',
+                      opacity: isDownloading || !isOnline ? 0.6 : 1
+                    }}
+                  >
+                    {isDownloading ? `Downloading... ${downloadProgress}%` : 'Download Current Area'}
+                  </button>
+                  <button
+                    onClick={clearCache}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Clear Cache ({cachedTilesCount} tiles)
+                  </button>
                 </div>
-              )}
+                <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>
+                  Downloads tiles for zoom levels {Math.max(8, currentZoom - 2)}-{Math.min(16, currentZoom + 2)}
+                </div>
+              </div>
+            )}
 
-              <input
-                type="text"
-                placeholder="Search temples by name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ margin: '5px', padding: '8px', fontSize: '14px' }}
+            <input
+              type="text"
+              placeholder="Search temples by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ margin: '5px', padding: '8px', fontSize: '14px' }}
+            />
+            {showDropdown && (
+              <ul style={{ margin: '0 5px', padding: 0, listStyle: 'none', background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 1000, width: 'calc(100% - 10px)', top: '40px' }}>
+                {searchResults.map((temple) => (
+                  <li key={temple.id} onClick={() => selectTemple(temple)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee', textAlign: 'left' }}>
+                    <div style={{ fontWeight: 'bold' }}>{temple.name}</div>
+                    {temple.location && <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{temple.location}</div>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <MapContainer center={sriLankaCenter} zoom={7} zoomControl={false} style={{ height: '100%', width: '100%', flex: 1 }}>
+              <OfflineTileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                onLayerReady={handleLayerReady}
               />
-              {showDropdown && (
-                <ul style={{ margin: '0 5px', padding: 0, listStyle: 'none', background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 1000, width: 'calc(100% - 10px)', top: '40px' }}>
-                  {searchResults.map((temple) => (
-                    <li key={temple.id} onClick={() => selectTemple(temple)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee', textAlign: 'left' }}>
-                      <div style={{ fontWeight: 'bold' }}>{temple.name}</div>
-                      {temple.location && <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{temple.location}</div>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <MapContainer center={sriLankaCenter} zoom={7} zoomControl={false} style={{ height: '100%', width: '100%', flex: 1 }}>
-                <OfflineTileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  onLayerReady={handleLayerReady}
-                />
-                <MapController flyToPosition={flyToPosition} onMapReady={handleMapReady} onFlyToComplete={handleFlyToComplete} isFlyingRef={isFlyingRef} />
-                <MapEventHandler
-                  onBoundsChange={handleBoundsChange}
-                  onZoomChange={handleZoomChange}
-                  onMapInteraction={handleMapInteraction}
-                  onMapClick={handleMapClick}
-                  isFlyingRef={isFlyingRef}
-                />
-                {temples.map((temple) => (
-                <Marker
-                  key={temple.id}
-                  position={[temple.latitude, temple.longitude]}
-                  ref={(el) => { markersRef.current[temple.id] = el; }}
-                  className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
-                  eventHandlers={{
-                    click: () => setSelectedMarkerId(idFor(temple)),
-                  }}
-                >
-                  <Tooltip>{temple.name}</Tooltip>
-                  <Popup maxWidth={250} minWidth={200} autoPan={false}>
-                    <div style={{ fontSize: '12px' }}>
-                      <h3 style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{temple.name}</h3>
-                      <p style={{ margin: '0 0 5px 0' }}>{temple.location}</p>
-                      <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
-                        <button onClick={async () => {
-                          // Fetch fresh temple data before opening details
-                          const freshTemple = await fetchTempleById(idFor(temple));
-                          setSelectedTemple(freshTemple || temple);
-                        }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>View Details</button>
-                        <button onClick={() => {
-                          setShowCommentForm(true);
-                          setCommentText('');
-                        }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>Add Comment</button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
-                        <button onClick={() => {
-                          setShowSuggestNameForm(true);
-                          setSuggestedNameText('');
-                        }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>Suggest Name</button>
-                      </div>
-                      {showCommentForm && selectedMarkerId === idFor(temple) && (
-                        <div style={{ border: '1px solid #ccc', padding: '8px', marginTop: '5px', backgroundColor: '#f9f9f9' }}>
-                          <textarea
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Enter your comment..."
-                            rows={3}
-                            style={{ width: '100%', fontSize: '11px', padding: '4px', marginBottom: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
-                            disabled={submittingComment}
-                          />
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <button
-                              onClick={() => submitComment(idFor(temple), commentText)}
-                              disabled={submittingComment || !commentText.trim()}
-                              style={{
-                                fontSize: '11px',
-                                padding: '4px 8px',
-                                flex: 1,
-                                backgroundColor: submittingComment ? '#ccc' : '#007bff',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: submittingComment ? 'not-allowed' : 'pointer'
-                              }}
-                            >
-                              {submittingComment ? 'Submitting...' : 'Submit'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowCommentForm(false);
-                                setCommentText('');
-                              }}
-                              style={{
-                                fontSize: '11px',
-                                padding: '4px 8px',
-                                flex: 1,
-                                backgroundColor: '#6c757d',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
-                        <div style={{ border: '1px solid #ccc', padding: '8px', marginTop: '5px', backgroundColor: '#f9f9f9' }}>
-                          <input
-                            type="text"
-                            value={suggestedNameText}
-                            onChange={(e) => setSuggestedNameText(e.target.value)}
-                            placeholder="Enter suggested temple name..."
-                            style={{ width: '100%', fontSize: '11px', padding: '4px', marginBottom: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
-                            disabled={submittingSuggestedName}
-                          />
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <button
-                              onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
-                              disabled={submittingSuggestedName || !suggestedNameText.trim()}
-                              style={{
-                                fontSize: '11px',
-                                padding: '4px 8px',
-                                flex: 1,
-                                backgroundColor: submittingSuggestedName ? '#ccc' : '#007bff',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: submittingSuggestedName ? 'not-allowed' : 'pointer'
-                              }}
-                            >
-                              {submittingSuggestedName ? 'Submitting...' : 'Submit'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowSuggestNameForm(false);
-                                setSuggestedNameText('');
-                              }}
-                              style={{
-                                fontSize: '11px',
-                                padding: '4px 8px',
-                                flex: 1,
-                                backgroundColor: '#6c757d',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {commentMessage && selectedMarkerId === idFor(temple) && (
-                        <div style={{
-                          padding: '6px',
-                          marginTop: '5px',
-                          borderRadius: '3px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          textAlign: 'center',
-                          backgroundColor: commentMessageType === 'success' ? '#d4edda' : '#f8d7da',
-                          color: commentMessageType === 'success' ? '#155724' : '#721c24',
-                          border: `1px solid ${commentMessageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`
-                        }}>
-                          {commentMessage}
-                        </div>
-                      )}
-                      {suggestNameMessage && selectedMarkerId === idFor(temple) && (
-                        <div style={{
-                          padding: '6px',
-                          marginTop: '5px',
-                          borderRadius: '3px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          textAlign: 'center',
-                          backgroundColor: suggestNameMessageType === 'success' ? '#d4edda' : '#f8d7da',
-                          color: suggestNameMessageType === 'success' ? '#155724' : '#721c24',
-                          border: `1px solid ${suggestNameMessageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`
-                        }}>
-                          {suggestNameMessage}
-                        </div>
-                      )}
+              <MapController flyToPosition={flyToPosition} onMapReady={handleMapReady} onFlyToComplete={handleFlyToComplete} isFlyingRef={isFlyingRef} />
+              <MapEventHandler
+                onBoundsChange={handleBoundsChange}
+                onZoomChange={handleZoomChange}
+                onMapInteraction={handleMapInteraction}
+                onMapClick={handleMapClick}
+                isFlyingRef={isFlyingRef}
+              />
+              {temples.map((temple) => (
+              <Marker
+                key={temple.id}
+                position={[temple.latitude, temple.longitude]}
+                ref={(el) => { markersRef.current[temple.id] = el; }}
+                className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
+                eventHandlers={{
+                  click: () => setSelectedMarkerId(idFor(temple)),
+                }}
+              >
+                <Tooltip>{temple.name}</Tooltip>
+                <Popup maxWidth={250} minWidth={200} autoPan={false}>
+                  <div style={{ fontSize: '12px' }}>
+                    <h3 style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{temple.name}</h3>
+                    <p style={{ margin: '0 0 5px 0' }}>{temple.location}</p>
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
+                      <button onClick={async () => {
+                        // Fetch fresh temple data before opening details
+                        const freshTemple = await fetchTempleById(idFor(temple));
+                        setSelectedTemple(freshTemple || temple);
+                      }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>View Details</button>
+                      <button onClick={() => {
+                        setShowCommentForm(true);
+                        setCommentText('');
+                      }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>Add Comment</button>
                     </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          </>
-        )}
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '5px' }}>
+                      <button onClick={() => {
+                        setShowSuggestNameForm(true);
+                        setSuggestedNameText('');
+                      }} style={{ fontSize: '11px', padding: '4px 8px', flex: 1 }}>Suggest Name</button>
+                    </div>
+                    {showCommentForm && selectedMarkerId === idFor(temple) && (
+                      <div style={{ border: '1px solid #ccc', padding: '8px', marginTop: '5px', backgroundColor: '#f9f9f9' }}>
+                        <textarea
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder="Enter your comment..."
+                          rows={3}
+                          style={{ width: '100%', fontSize: '11px', padding: '4px', marginBottom: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                          disabled={submittingComment}
+                        />
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => submitComment(idFor(temple), commentText)}
+                            disabled={submittingComment || !commentText.trim()}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: submittingComment ? '#ccc' : '#007bff',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: submittingComment ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {submittingComment ? 'Submitting...' : 'Submit'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowCommentForm(false);
+                              setCommentText('');
+                            }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: '#6c757d',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
+                      <div style={{ border: '1px solid #ccc', padding: '8px', marginTop: '5px', backgroundColor: '#f9f9f9' }}>
+                        <input
+                          type="text"
+                          value={suggestedNameText}
+                          onChange={(e) => setSuggestedNameText(e.target.value)}
+                          placeholder="Enter suggested temple name..."
+                          style={{ width: '100%', fontSize: '11px', padding: '4px', marginBottom: '5px', border: '1px solid #ccc', borderRadius: '3px' }}
+                          disabled={submittingSuggestedName}
+                        />
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
+                            disabled={submittingSuggestedName || !suggestedNameText.trim()}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: submittingSuggestedName ? '#ccc' : '#007bff',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: submittingSuggestedName ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {submittingSuggestedName ? 'Submitting...' : 'Submit'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowSuggestNameForm(false);
+                              setSuggestedNameText('');
+                            }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 8px',
+                              flex: 1,
+                              backgroundColor: '#6c757d',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {commentMessage && selectedMarkerId === idFor(temple) && (
+                      <div style={{
+                        padding: '6px',
+                        marginTop: '5px',
+                        borderRadius: '3px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        backgroundColor: commentMessageType === 'success' ? '#d4edda' : '#f8d7da',
+                        color: commentMessageType === 'success' ? '#155724' : '#721c24',
+                        border: `1px solid ${commentMessageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+                      }}>
+                        {commentMessage}
+                      </div>
+                    )}
+                    {suggestNameMessage && selectedMarkerId === idFor(temple) && (
+                      <div style={{
+                        padding: '6px',
+                        marginTop: '5px',
+                        borderRadius: '3px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        backgroundColor: suggestNameMessageType === 'success' ? '#d4edda' : '#f8d7da',
+                        color: suggestNameMessageType === 'success' ? '#155724' : '#721c24',
+                        border: `1px solid ${suggestNameMessageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+                      }}>
+                        {suggestNameMessage}
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </>
         {selectedTemple && (
           <TempleDetail
             temple={selectedTemple}
