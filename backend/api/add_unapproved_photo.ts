@@ -142,12 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Add photo name to temple's unapproved_photos array
     const updateResult = await (db.collection("temples") as any).updateOne(
-      {
-        $or: [
-          { id: templeId },
-          { osm_id: isNaN(parseInt(templeId)) ? undefined : parseInt(templeId) }
-        ].filter(condition => condition !== undefined)
-      },
+      { _id: ObjectId.createFromHexString(templeId) },
       {
         $addToSet: { unapproved_photos: photoName.trim() },
         $set: { updated_at: new Date() }

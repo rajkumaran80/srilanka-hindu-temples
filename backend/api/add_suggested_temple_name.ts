@@ -1,4 +1,4 @@
-import { MongoClient, Db } from "mongodb";
+import { MongoClient, Db, ObjectId } from "mongodb";
 
 // Define interfaces for the API
 interface SuggestedNameData {
@@ -149,12 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Add suggested name to temple document
     const updateResult = await (db.collection("temples") as any).updateOne(
-      {
-        $or: [
-          { id: templeId },
-          { osm_id: isNaN(parseInt(templeId)) ? undefined : parseInt(templeId) }
-        ].filter(condition => condition !== undefined)
-      },
+      { _id: ObjectId.createFromHexString(templeId) },
       {
         $push: { suggestedNames: newSuggestedName },
         $set: { updated_at: new Date() }

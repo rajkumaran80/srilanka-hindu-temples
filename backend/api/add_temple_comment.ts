@@ -149,12 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // Add comment to temple document
     const updateResult = await (db.collection("temples") as any).updateOne(
-      {
-        $or: [
-          { id: templeId },
-          { osm_id: isNaN(parseInt(templeId)) ? undefined : parseInt(templeId) }
-        ].filter(condition => condition !== undefined)
-      },
+      { _id: ObjectId.createFromHexString(templeId) },
       {
         $push: { comments: newComment },
         $set: { updated_at: new Date() }
