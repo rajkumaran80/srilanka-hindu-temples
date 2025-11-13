@@ -1,0 +1,210 @@
+/* Main container */
+.map-component {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Offline status bar */
+.offline-status-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  border-bottom: 2px solid #f5c6cb;
+}
+
+/* Search input */
+.search-input {
+  margin: 5px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+/* Search dropdown */
+.search-dropdown {
+  margin: 0 5px;
+  padding: 0;
+  list-style: none;
+  background: white;
+  border: 1px solid #ccc;
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  z-index: 1000;
+  width: calc(100% - 10px);
+  top: 40px;
+}
+
+.search-dropdown li {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.search-dropdown li:hover {
+  background-color: #f5f5f5;
+}
+
+.search-dropdown li div:first-child {
+  font-weight: bold;
+}
+
+.search-dropdown li div:last-child {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* Map container */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.map-container {
+  height: 100vh;
+  width: 100%;
+  flex: 1;
+}
+
+/* Selected marker */
+.selected-marker img {
+  box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
+  border-radius: 50%;
+}
+
+/* Popup styles */
+.popup-heading {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+}
+
+.popup-location {
+  margin: 0 0 5px 0;
+}
+
+.popup-content {
+  font-size: 12px;
+}
+
+.popup-button-group {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.popup-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  border: 1px solid #007bff;
+  background-color: white;
+  color: #007bff;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.popup-button:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Form styles */
+.popup-form-container {
+  border: 1px solid #ccc;
+  padding: 8px;
+  margin-top: 5px;
+  background-color: #f9f9f9;
+  border-radius: 3px;
+}
+
+.popup-textarea,
+.popup-input {
+  width: 100%;
+  font-size: 11px;
+  padding: 4px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: inherit;
+}
+
+.popup-textarea {
+  resize: none;
+}
+
+.form-button-group {
+  display: flex;
+  gap: 4px;
+}
+
+.form-submit-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-submit-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.form-submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.form-cancel-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-cancel-button:hover {
+  background-color: #5a6268;
+}
+
+/* Message styles */
+.message-box {
+  padding: 6px;
+  margin-top: 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.message-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
