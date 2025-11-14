@@ -10,15 +10,6 @@ const TempleDetail = ({ temple, onClose }) => {
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploadMessageType, setUploadMessageType] = useState(''); // 'success' or 'error'
-  const [apiBaseUrl, setApiBaseUrl] = useState('');
-
-
-    useEffect(() => {
-      const initializeApi = async () => {
-        setApiBaseUrl(API_BASE_URL);
-      };
-      initializeApi();
-    }, []);
 
   const photos = temple.photos || [];
 
@@ -205,7 +196,7 @@ const TempleDetail = ({ temple, onClose }) => {
 
       // Step 2: Get presigned URL from Azure
       setUploadMessage('Getting upload URL...');
-      const presignedResponse = await fetch(`${apiBaseUrl}/api/presigned_upload_photo.ts`, {
+      const presignedResponse = await fetch(`${API_BASE_URL}/api/presigned_upload_photo.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -257,7 +248,7 @@ const TempleDetail = ({ temple, onClose }) => {
       const blobUrl = presignedUrl.split('?')[0]; // Remove SAS token
 
       try {
-        const unapprovedResponse = await fetch(`${apiBaseUrl}/api/add_unapproved_photo.ts`, {
+        const unapprovedResponse = await fetch(`${API_BASE_URL}/api/add_unapproved_photo.ts`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

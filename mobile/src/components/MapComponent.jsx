@@ -73,7 +73,7 @@ const MapController = ({ flyToPosition, onMapReady, onFlyToComplete, isFlyingRef
 };
 
 // Component to handle map events
-const MapEventHandler = ({ onBoundsChange, onZoomChange, onMapInteraction, onMapClick, isFlyingRef }) => {
+const MapEventHandler = ({ onBoundsChange, onZoomChange, onMapInteraction, onMapClick, onMapClickInAddMode, addTempleMode, isFlyingRef }) => {
   const map = useMapEvents({
     zoomend: () => {
       const zoom = map.getZoom();
@@ -94,9 +94,13 @@ const MapEventHandler = ({ onBoundsChange, onZoomChange, onMapInteraction, onMap
         onMapInteraction();
       }
     },
-    click: () => {
-      // Reset search and selected marker on map click
-      onMapClick();
+    click: (event) => {
+      if (addTempleMode) {
+        onMapClickInAddMode(event);
+      } else {
+        // Reset search and selected marker on map click
+        onMapClick();
+      }
     }
   });
   return null;
@@ -108,7 +112,6 @@ const MapComponent = () => {
   const [loading, setLoading] = useState(true);
   const [loadedBounds, setLoadedBounds] = useState(new Set()); // Track loaded geographic areas
   const [currentZoom, setCurrentZoom] = useState(7);
-  const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -128,6 +131,22 @@ const MapComponent = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflinePopup, setShowOfflinePopup] = useState(!navigator.onLine);
   const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
+  const [addTempleMode, setAddTempleMode] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [showAddTempleForm, setShowAddTempleForm] = useState(false);
+  const [newTempleData, setNewTempleData] = useState({
+    name: '',
+    location: '',
+    description: '',
+    deity: '',
+    temple_type: '',
+    district: '',
+    photos: []
+  });
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [submittingTemple, setSubmittingTemple] = useState(false);
+  const [addTempleMessage, setAddTempleMessage] = useState('');
+  const [addTempleMessageType, setAddTempleMessageType] = useState('');
 
   const markersRef = useRef({});
   const mapRef = useRef(null);
@@ -141,7 +160,7 @@ const MapComponent = () => {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/temples_initial.ts`);
+      const response = await fetch(`${API_BASE_URL}/api/temples_initial.ts`);
       if (response.ok) {
         const data = await response.json();
         setTemples(data);
@@ -183,7 +202,7 @@ const MapComponent = () => {
       }
 
       const response = await fetch(
-        `${apiBaseUrl}/api/temples_load.ts?north=${north}&south=${south}&east=${east}&west=${west}&limit=20`
+        `${API_BASE_URL}/api/temples_load.ts?north=${north}&south=${south}&east=${east}&west=${west}&limit=20`
       );
 
       if (response.ok) {
@@ -222,7 +241,7 @@ const MapComponent = () => {
       return;
     }
     try {
-      const response = await fetch(`${apiBaseUrl}/api/temples_search_by_name.ts?name=${encodeURIComponent(name)}`);
+      const response = await fetch(`${API_BASE_URL}/api/temples_search_by_name.ts?name=${encodeURIComponent(name)}`);
       if (response.ok) {
         const results = await response.json();
         setSearchResults(results);
@@ -237,7 +256,7 @@ const MapComponent = () => {
     try {
       // Use the search by name API with the temple ID as name to get fresh data
       // Since we want exact match, we'll search and find the temple with matching ID
-      const response = await fetch(`${apiBaseUrl}/api/temples_search_by_id.ts?id=${encodeURIComponent(templeId)}`);
+      const response = await fetch(`${API_BASE_URL}/api/temples_search_by_id.ts?id=${encodeURIComponent(templeId)}`);
       if (response.ok) {
         const results = await response.json();
         // Find the temple with matching ID
@@ -310,7 +329,7 @@ const MapComponent = () => {
     setCommentMessageType('');
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/add_temple_comment.ts`, {
+      const response = await fetch(`${API_BASE_URL}/api/add_temple_comment.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -347,7 +366,7 @@ const MapComponent = () => {
     setSuggestNameMessageType('');
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/add_suggested_temple_name.ts`, {
+      const response = await fetch(`${API_BASE_URL}/api/add_suggested_temple_name.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -384,6 +403,131 @@ const MapComponent = () => {
     // Cache function removed - using standard tiles only
   };
 
+  // Add temple functionality
+  const handleMapClickInAddMode = (event) => {
+    if (addTempleMode) {
+      const { lat, lng } = event.latlng;
+      setSelectedLocation({ lat, lng });
+      setShowAddTempleForm(true);
+      setAddTempleMode(false); // Exit add mode after selecting location
+    }
+  };
+
+  const handlePhotoUpload = async (files) => {
+    if (!files || files.length === 0) return;
+
+    setUploadingPhotos(true);
+    const uploadedPhotoUrls = [];
+
+    try {
+      for (const file of files) {
+        // Get presigned URL for upload
+        const presignedResponse = await fetch(`${API_BASE_URL}/api/presigned_upload_photo.ts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            templeId: 'new-temple', // Use a placeholder for new temples
+            fileType: file.type,
+            filename: file.name,
+          }),
+        });
+
+        if (!presignedResponse.ok) {
+          throw new Error('Failed to get upload URL');
+        }
+
+        const { presignedUrl, fileName } = await presignedResponse.json();
+
+        // Upload the file
+        const uploadResponse = await fetch(presignedUrl, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload photo');
+        }
+
+        uploadedPhotoUrls.push(fileName);
+      }
+
+      setNewTempleData(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...uploadedPhotoUrls]
+      }));
+
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      setAddTempleMessage('Failed to upload photos. Please try again.');
+      setAddTempleMessageType('error');
+    } finally {
+      setUploadingPhotos(false);
+    }
+  };
+
+  const submitNewTemple = async () => {
+    if (!selectedLocation || !newTempleData.name.trim()) {
+      setAddTempleMessage('Please select a location and enter a temple name.');
+      setAddTempleMessageType('error');
+      return;
+    }
+
+    setSubmittingTemple(true);
+    setAddTempleMessage('');
+
+    try {
+      const templeData = {
+        ...newTempleData,
+        latitude: selectedLocation.lat,
+        longitude: selectedLocation.lng,
+        submitted_by: 'mobile-user', // Could be made dynamic
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/add_temple.ts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(templeData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAddTempleMessage('Temple added successfully! It will be reviewed by administrators.');
+        setAddTempleMessageType('success');
+
+        // Reset form
+        setNewTempleData({
+          name: '',
+          location: '',
+          description: '',
+          deity: '',
+          temple_type: '',
+          district: '',
+          photos: []
+        });
+        setSelectedLocation(null);
+        setShowAddTempleForm(false);
+
+      } else {
+        const error = await response.json();
+        setAddTempleMessage(error.error || 'Failed to add temple. Please try again.');
+        setAddTempleMessageType('error');
+      }
+    } catch (error) {
+      console.error('Error submitting temple:', error);
+      setAddTempleMessage('Error submitting temple. Please check your connection and try again.');
+      setAddTempleMessageType('error');
+    } finally {
+      setSubmittingTemple(false);
+    }
+  };
+
   const updateOnlineStatus = () => {
     const wasOffline = !isOnline;
     setIsOnline(navigator.onLine);
@@ -414,23 +558,16 @@ const MapComponent = () => {
   }, []);
 
   useEffect(() => {
-    const initializeApi = async () => {
-      setApiBaseUrl(API_BASE_URL);
-    };
-    initializeApi();
-  }, []);
-
-  useEffect(() => {
-    if (apiBaseUrl) {
+    if (API_BASE_URL) {
       fetchInitialTemples();
     }
-  }, [apiBaseUrl]);
+  }, [API_BASE_URL]);
 
   useEffect(() => {
-    if (apiBaseUrl) {
+    if (API_BASE_URL) {
       searchTemplesByName(searchTerm);
     }
-  }, [searchTerm, apiBaseUrl]);
+  }, [searchTerm, API_BASE_URL]);
 
   // Close popups when temple details are opened
   useEffect(() => {
@@ -498,13 +635,27 @@ const MapComponent = () => {
         <>
           {/* Always show map and search functionality */}
           <>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search temples by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className="search-and-controls">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search temples by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <button
+                className={`add-temple-button ${addTempleMode ? 'active' : ''}`}
+                onClick={() => setAddTempleMode(!addTempleMode)}
+                title={addTempleMode ? 'Cancel adding temple' : 'Add a new temple'}
+              >
+                {addTempleMode ? '❌ Cancel' : '➕ Add Temple'}
+              </button>
+            </div>
+            {addTempleMode && (
+              <div className="add-temple-instructions">
+                📍 Click on the map to select the temple location
+              </div>
+            )}
             {showDropdown && (
               <ul className="search-dropdown">
                 {searchResults.map((temple) => (
@@ -540,6 +691,8 @@ const MapComponent = () => {
                 onZoomChange={handleZoomChange}
                 onMapInteraction={handleMapInteraction}
                 onMapClick={handleMapClick}
+                onMapClickInAddMode={handleMapClickInAddMode}
+                addTempleMode={addTempleMode}
                 isFlyingRef={isFlyingRef}
               />
               {temples.map((temple) => (
@@ -649,6 +802,137 @@ const MapComponent = () => {
               </Marker>
             ))}
           </MapContainer>
+
+          {/* Add Temple Form */}
+          {showAddTempleForm && (
+            <div className="add-temple-overlay">
+              <div className="add-temple-form">
+                <h3>Add New Temple</h3>
+                <div className="form-group">
+                  <label>Temple Name *</label>
+                  <input
+                    type="text"
+                    value={newTempleData.name}
+                    onChange={(e) => setNewTempleData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter temple name"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Location</label>
+                  <input
+                    type="text"
+                    value={newTempleData.location}
+                    onChange={(e) => setNewTempleData(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="City, District"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea
+                    value={newTempleData.description}
+                    onChange={(e) => setNewTempleData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Describe the temple..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Deity</label>
+                    <input
+                      type="text"
+                      value={newTempleData.deity}
+                      onChange={(e) => setNewTempleData(prev => ({ ...prev, deity: e.target.value }))}
+                      placeholder="e.g., Shiva, Vishnu"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Temple Type</label>
+                    <select
+                      value={newTempleData.temple_type}
+                      onChange={(e) => setNewTempleData(prev => ({ ...prev, temple_type: e.target.value }))}
+                    >
+                      <option value="">Select type</option>
+                      <option value="hindu_temple">Hindu Temple</option>
+                      <option value="kovil">Kovil</option>
+                      <option value="shrine">Shrine</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>District</label>
+                  <input
+                    type="text"
+                    value={newTempleData.district}
+                    onChange={(e) => setNewTempleData(prev => ({ ...prev, district: e.target.value }))}
+                    placeholder="e.g., Colombo, Kandy"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Photos</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => handlePhotoUpload(Array.from(e.target.files || []))}
+                    disabled={uploadingPhotos}
+                  />
+                  {uploadingPhotos && <div className="upload-status">Uploading photos...</div>}
+                  {newTempleData.photos.length > 0 && (
+                    <div className="photo-count">{newTempleData.photos.length} photo(s) uploaded</div>
+                  )}
+                </div>
+
+                {selectedLocation && (
+                  <div className="location-info">
+                    📍 Location: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                  </div>
+                )}
+
+                {addTempleMessage && (
+                  <div className={`message-box ${addTempleMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                    {addTempleMessage}
+                  </div>
+                )}
+
+                <div className="form-actions">
+                  <button
+                    className="submit-button"
+                    onClick={submitNewTemple}
+                    disabled={submittingTemple || !newTempleData.name.trim()}
+                  >
+                    {submittingTemple ? 'Submitting...' : 'Submit Temple'}
+                  </button>
+                  <button
+                    className="cancel-button"
+                    onClick={() => {
+                      setShowAddTempleForm(false);
+                      setSelectedLocation(null);
+                      setNewTempleData({
+                        name: '',
+                        location: '',
+                        description: '',
+                        deity: '',
+                        temple_type: '',
+                        district: '',
+                        photos: []
+                      });
+                      setAddTempleMessage('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
         {selectedTemple && (
           <TempleDetail

@@ -208,3 +208,211 @@
   color: #721c24;
   border: 1px solid #f5c6cb;
 }
+
+/* Add Temple Styles */
+.search-and-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin: 5px;
+}
+
+.search-and-controls .search-input {
+  flex: 1;
+  margin: 0;
+}
+
+.add-temple-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-temple-button:hover {
+  background-color: #218838;
+}
+
+.add-temple-button.active {
+  background-color: #dc3545;
+}
+
+.add-temple-button.active:hover {
+  background-color: #c82333;
+}
+
+.add-temple-instructions {
+  margin: 0 5px 5px 5px;
+  padding: 8px;
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Add Temple Form Overlay */
+.add-temple-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.add-temple-form {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.add-temple-form h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.upload-status {
+  margin-top: 5px;
+  color: #007bff;
+  font-style: italic;
+}
+
+.photo-count {
+  margin-top: 5px;
+  color: #28a745;
+  font-weight: bold;
+}
+
+.location-info {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  text-align: center;
+  font-family: monospace;
+  color: #495057;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.submit-button {
+  flex: 1;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  flex: 1;
+  padding: 10px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover {
+  background-color: #5a6268;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .add-temple-form {
+    width: 95%;
+    padding: 15px;
+    margin: 10px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .search-and-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-and-controls .search-input {
+    margin-bottom: 5px;
+  }
+}
