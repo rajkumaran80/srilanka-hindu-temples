@@ -1,0 +1,418 @@
+/* Main container */
+.map-component {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Offline status bar */
+.offline-status-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  border-bottom: 2px solid #f5c6cb;
+}
+
+/* Search input */
+.search-input {
+  margin: 5px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+/* Search dropdown */
+.search-dropdown {
+  margin: 0 5px;
+  padding: 0;
+  list-style: none;
+  background: white;
+  border: 1px solid #ccc;
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  z-index: 1000;
+  width: calc(100% - 10px);
+  top: 40px;
+}
+
+.search-dropdown li {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.search-dropdown li:hover {
+  background-color: #f5f5f5;
+}
+
+.search-dropdown li div:first-child {
+  font-weight: bold;
+}
+
+.search-dropdown li div:last-child {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* Map container */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.map-container {
+  height: 100vh;
+  width: 100%;
+  flex: 1;
+}
+
+/* Selected marker */
+.selected-marker img {
+  box-shadow: 0 0 10px 3px rgba(255, 0, 0, 0.8);
+  border-radius: 50%;
+}
+
+/* Popup styles */
+.popup-heading {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+}
+
+.popup-location {
+  margin: 0 0 5px 0;
+}
+
+.popup-content {
+  font-size: 12px;
+}
+
+.popup-button-group {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.popup-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  border: 1px solid #007bff;
+  background-color: white;
+  color: #007bff;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.popup-button:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Form styles */
+.popup-form-container {
+  border: 1px solid #ccc;
+  padding: 8px;
+  margin-top: 5px;
+  background-color: #f9f9f9;
+  border-radius: 3px;
+}
+
+.popup-textarea,
+.popup-input {
+  width: 100%;
+  font-size: 11px;
+  padding: 4px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: inherit;
+}
+
+.popup-textarea {
+  resize: none;
+}
+
+.form-button-group {
+  display: flex;
+  gap: 4px;
+}
+
+.form-submit-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-submit-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.form-submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.form-cancel-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-cancel-button:hover {
+  background-color: #5a6268;
+}
+
+/* Message styles */
+.message-box {
+  padding: 6px;
+  margin-top: 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.message-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Add Temple Styles */
+.search-and-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin: 5px;
+}
+
+.search-and-controls .search-input {
+  flex: 1;
+  margin: 0;
+}
+
+.add-temple-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-temple-button:hover {
+  background-color: #218838;
+}
+
+.add-temple-button.active {
+  background-color: #dc3545;
+}
+
+.add-temple-button.active:hover {
+  background-color: #c82333;
+}
+
+.add-temple-instructions {
+  margin: 0 5px 5px 5px;
+  padding: 8px;
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Add Temple Form Overlay */
+.add-temple-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.add-temple-form {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.add-temple-form h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.upload-status {
+  margin-top: 5px;
+  color: #007bff;
+  font-style: italic;
+}
+
+.photo-count {
+  margin-top: 5px;
+  color: #28a745;
+  font-weight: bold;
+}
+
+.location-info {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  text-align: center;
+  font-family: monospace;
+  color: #495057;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.submit-button {
+  flex: 1;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  flex: 1;
+  padding: 10px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover {
+  background-color: #5a6268;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .add-temple-form {
+    width: 95%;
+    padding: 15px;
+    margin: 10px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .search-and-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-and-controls .search-input {
+    margin-bottom: 5px;
+  }
+}
