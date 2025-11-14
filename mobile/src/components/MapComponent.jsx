@@ -669,7 +669,7 @@ const MapComponent = () => {
             <MapContainer
               center={sriLankaCenter}
               zoom={7}
-              zoomControl={isOnline}
+              zoomControl={false}
               scrollWheelZoom={isOnline}
               doubleClickZoom={isOnline}
               boxZoom={isOnline}
