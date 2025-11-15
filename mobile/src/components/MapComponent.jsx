@@ -143,6 +143,7 @@ const MapComponent = () => {
     district: '',
     photos: []
   });
+  const [selectedPhotoFiles, setSelectedPhotoFiles] = useState([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [submittingTemple, setSubmittingTemple] = useState(false);
   const [addTempleMessage, setAddTempleMessage] = useState('');
@@ -413,60 +414,29 @@ const MapComponent = () => {
     }
   };
 
-  const handlePhotoUpload = async (files) => {
-    if (!files || files.length === 0) return;
+  // Convert file to base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  };
 
-    setUploadingPhotos(true);
-    const uploadedPhotoUrls = [];
-
-    try {
-      for (const file of files) {
-        // Get presigned URL for upload
-        const presignedResponse = await fetch(`${API_BASE_URL}/api/presigned_upload_photo.ts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            templeId: 'new-temple', // Use a placeholder for new temples
-            fileType: file.type,
-            filename: file.name,
-          }),
-        });
-
-        if (!presignedResponse.ok) {
-          throw new Error('Failed to get upload URL');
+  // Retry function with exponential backoff
+  const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error;
         }
-
-        const { presignedUrl, fileName } = await presignedResponse.json();
-
-        // Upload the file
-        const uploadResponse = await fetch(presignedUrl, {
-          method: 'PUT',
-          body: file,
-          headers: {
-            'Content-Type': file.type,
-          },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error('Failed to upload photo');
-        }
-
-        uploadedPhotoUrls.push(fileName);
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-
-      setNewTempleData(prev => ({
-        ...prev,
-        photos: [...prev.photos, ...uploadedPhotoUrls]
-      }));
-
-    } catch (error) {
-      console.error('Error uploading photos:', error);
-      setAddTempleMessage('Failed to upload photos. Please try again.');
-      setAddTempleMessageType('error');
-    } finally {
-      setUploadingPhotos(false);
     }
   };
 
@@ -481,11 +451,13 @@ const MapComponent = () => {
     setAddTempleMessage('');
 
     try {
+      // Step 1: Create temple without photos first
       const templeData = {
         ...newTempleData,
         latitude: selectedLocation.lat,
         longitude: selectedLocation.lng,
         submitted_by: 'mobile-user', // Could be made dynamic
+        photos: [] // Don't include photos in initial submission
       };
 
       const response = await fetch(`${API_BASE_URL}/api/add_temple.ts`, {
@@ -496,29 +468,110 @@ const MapComponent = () => {
         body: JSON.stringify(templeData),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        setAddTempleMessage('Temple added successfully! It will be reviewed by administrators.');
-        setAddTempleMessageType('success');
-
-        // Reset form
-        setNewTempleData({
-          name: '',
-          location: '',
-          description: '',
-          deity: '',
-          temple_type: '',
-          district: '',
-          photos: []
-        });
-        setSelectedLocation(null);
-        setShowAddTempleForm(false);
-
-      } else {
+      if (!response.ok) {
         const error = await response.json();
         setAddTempleMessage(error.error || 'Failed to add temple. Please try again.');
         setAddTempleMessageType('error');
+        return;
       }
+
+      const result = await response.json();
+      const templeId = result.temple.id;
+
+      // Step 2: Upload photos if any were selected
+      if (selectedPhotoFiles.length > 0) {
+        setUploadingPhotos(true);
+        setAddTempleMessage('Temple created! Uploading photos...');
+
+        try {
+          for (const file of selectedPhotoFiles) {
+            await retryWithBackoff(async () => {
+              // Get presigned URL for upload
+              const presignedResponse = await fetch(`${API_BASE_URL}/api/presigned_upload_photo_to_suggested_temple.ts`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  templeId: templeId,
+                  fileType: file.type,
+                  filename: file.name,
+                }),
+              });
+
+              if (!presignedResponse.ok) {
+                throw new Error('Failed to get upload URL');
+              }
+
+              const { presignedUrl, fileName } = await presignedResponse.json();
+
+              // Upload the file to Azure with retry
+              await retryWithBackoff(async () => {
+                const uploadResponse = await fetch(presignedUrl, {
+                  method: 'PUT',
+                  body: file,
+                  headers: {
+                    'Content-Type': file.type,
+                    'x-ms-blob-type': 'BlockBlob',
+                  },
+                });
+
+                if (!uploadResponse.ok) {
+                  throw new Error('Failed to upload photo to Azure');
+                }
+              }, 3, 2000); // Longer delay for Azure uploads
+
+              // Extract the complete Azure blob storage URL (without SAS token)
+              const azureUrl = presignedUrl.split('?')[0];
+
+              // Add complete photo URL to suggested temple with retry
+              await retryWithBackoff(async () => {
+                const addPhotoResponse = await fetch(`${API_BASE_URL}/api/add_unapproved_photo_to_suggested_temple.ts`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    templeId: templeId,
+                    photoName: azureUrl, // Send complete Azure blob storage URL
+                  }),
+                });
+
+                if (!addPhotoResponse.ok) {
+                  throw new Error('Failed to associate photo with temple');
+                }
+              });
+            });
+          }
+        } catch (photoError) {
+          console.error('Error uploading photos:', photoError);
+          setAddTempleMessage('Temple created but photo upload failed. You can try again later.');
+          setAddTempleMessageType('error');
+          setUploadingPhotos(false);
+          return;
+        } finally {
+          setUploadingPhotos(false);
+        }
+      }
+
+      // Success
+      setAddTempleMessage('Temple added successfully! It will be reviewed by administrators.');
+      setAddTempleMessageType('success');
+
+      // Reset form
+      setNewTempleData({
+        name: '',
+        location: '',
+        description: '',
+        deity: '',
+        temple_type: '',
+        district: '',
+        photos: []
+      });
+      setSelectedPhotoFiles([]);
+      setSelectedLocation(null);
+      setShowAddTempleForm(false);
+
     } catch (error) {
       console.error('Error submitting temple:', error);
       setAddTempleMessage('Error submitting temple. Please check your connection and try again.');
@@ -881,12 +934,11 @@ const MapComponent = () => {
                     type="file"
                     multiple
                     accept="image/*"
-                    onChange={(e) => handlePhotoUpload(Array.from(e.target.files || []))}
+                    onChange={(e) => setSelectedPhotoFiles(Array.from(e.target.files || []))}
                     disabled={uploadingPhotos}
                   />
-                  {uploadingPhotos && <div className="upload-status">Uploading photos...</div>}
-                  {newTempleData.photos.length > 0 && (
-                    <div className="photo-count">{newTempleData.photos.length} photo(s) uploaded</div>
+                  {selectedPhotoFiles.length > 0 && (
+                    <div className="photo-count">{selectedPhotoFiles.length} photo(s) selected</div>
                   )}
                 </div>
 
@@ -924,6 +976,7 @@ const MapComponent = () => {
                         district: '',
                         photos: []
                       });
+                      setSelectedPhotoFiles([]);
                       setAddTempleMessage('');
                     }}
                   >

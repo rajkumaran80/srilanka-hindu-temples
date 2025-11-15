@@ -52,10 +52,13 @@ const templesSearchByNameHandler: VercelHandler = (await import('./api/temples_s
 const templesSearchByIdHandler: VercelHandler = (await import('./api/temples_search_by_id.js')).default;
 const addTempleCommentHandler: VercelHandler = (await import('./api/add_temple_comment.js')).default;
 const addSuggestedTempleNameHandler: VercelHandler = (await import('./api/add_suggested_temple_name.js')).default;
-const uploadTemplePhotoHandler: VercelHandler = (await import('./api/upload_temple_photo.js')).default;
-const uploadTemplePhotoAzureHandler: VercelHandler = (await import('./api/presigned_upload_photo.js')).default;
+
+const presignedUploadPhotoHandler: VercelHandler = (await import('./api/presigned_upload_photo.js')).default;
 const addUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo.js')).default;
+
 const addTempleHandler: VercelHandler = (await import('./api/add_temple.js')).default;
+const presignedUploadSuggestedTemplePhotoHandler: VercelHandler = (await import('./api/presigned_upload_photo_to_suggested_temple.js')).default;
+const addSuggestedTempleUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo_to_suggested_temple.js')).default;
 
 // Helper function to convert Express req/res to Vercel format
 function createVercelRequest(req: Request): VercelRequest {
@@ -129,16 +132,10 @@ app.post('/api/add_suggested_temple_name.ts', (req, res) => {
   addSuggestedTempleNameHandler(vercelReq, vercelRes);
 });
 
-app.post('/api/upload_temple_photo.ts', (req, res) => {
-  const vercelReq = createVercelRequest(req);
-  const vercelRes = createVercelResponse(res);
-  uploadTemplePhotoHandler(vercelReq, vercelRes);
-});
-
 app.post('/api/presigned_upload_photo.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
   const vercelRes = createVercelResponse(res);
-  uploadTemplePhotoAzureHandler(vercelReq, vercelRes);
+  presignedUploadPhotoHandler(vercelReq, vercelRes);
 });
 
 app.post('/api/add_unapproved_photo.ts', (req, res) => {
@@ -151,6 +148,18 @@ app.post('/api/add_temple.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
   const vercelRes = createVercelResponse(res);
   addTempleHandler(vercelReq, vercelRes);
+});
+
+app.post('/api/presigned_upload_photo_to_suggested_temple.ts', (req, res) => {
+  const vercelReq = createVercelRequest(req);
+  const vercelRes = createVercelResponse(res);
+  presignedUploadSuggestedTemplePhotoHandler(vercelReq, vercelRes);
+});
+
+app.post('/api/add_unapproved_photo_to_suggested_temple.ts', (req, res) => {
+  const vercelReq = createVercelRequest(req);
+  const vercelRes = createVercelResponse(res);
+  addSuggestedTempleUnapprovedPhotoHandler(vercelReq, vercelRes);
 });
 
 // Health check endpoint
@@ -175,5 +184,8 @@ app.listen(PORT, () => {
   console.log(`   POST /api/upload_temple_photo_azure - Generate Azure blob presigned URL for photo upload`);
   console.log(`   POST /api/add_unapproved_photo - Add photo name to temple's unapproved_photos field`);
   console.log(`   POST /api/add_temple - Add new temple submission`);
+  console.log(`   POST /api/add_suggested_temple_photo - Add photo to suggested temple`);
+  console.log(`   POST /api/presigned_upload_suggested_temple_photo - Generate presigned URL for suggested temple photo upload`);
+  console.log(`   POST /api/upload_suggested_temple_photo - Upload photo directly for suggested temple`);
   console.log(`   GET /health - Health check`);
 });
