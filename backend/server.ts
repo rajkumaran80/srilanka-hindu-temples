@@ -59,6 +59,8 @@ const addUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unappr
 const addTempleHandler: VercelHandler = (await import('./api/add_temple.js')).default;
 const presignedUploadSuggestedTemplePhotoHandler: VercelHandler = (await import('./api/presigned_upload_photo_to_suggested_temple.js')).default;
 const addSuggestedTempleUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo_to_suggested_temple.js')).default;
+const bookingHotelsSearchHandler: VercelHandler = (await import('./api/booking_hotels_search.js')).default;
+const bookingHotelsLinkHandler: VercelHandler = (await import('./api/booking_hotels_link.js')).default;
 
 // Helper function to convert Express req/res to Vercel format
 function createVercelRequest(req: Request): VercelRequest {
@@ -162,6 +164,18 @@ app.post('/api/add_unapproved_photo_to_suggested_temple.ts', (req, res) => {
   addSuggestedTempleUnapprovedPhotoHandler(vercelReq, vercelRes);
 });
 
+app.post('/api/hotels/search', (req, res) => {
+  const vercelReq = createVercelRequest(req);
+  const vercelRes = createVercelResponse(res);
+  bookingHotelsSearchHandler(vercelReq, vercelRes);
+});
+
+app.get('/api/hotels/:hotelId/link', (req, res) => {
+  const vercelReq = createVercelRequest(req);
+  const vercelRes = createVercelResponse(res);
+  bookingHotelsLinkHandler(vercelReq, vercelRes);
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Sri Lanka Hindu Temples API is running locally' });
@@ -187,5 +201,7 @@ app.listen(PORT, () => {
   console.log(`   POST /api/add_suggested_temple_photo - Add photo to suggested temple`);
   console.log(`   POST /api/presigned_upload_suggested_temple_photo - Generate presigned URL for suggested temple photo upload`);
   console.log(`   POST /api/upload_suggested_temple_photo - Upload photo directly for suggested temple`);
+  console.log(`   POST /api/hotels/search - Search hotels via Booking.com API`);
+  console.log(`   GET /api/hotels/:hotelId/link - Generate affiliate booking link`);
   console.log(`   GET /health - Health check`);
 });

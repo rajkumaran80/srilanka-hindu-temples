@@ -46,4 +46,6 @@ ios/build/
 # Ignore local OS-specific and temporary files
 *.local
 
+
+apk-builds/
 # End of file

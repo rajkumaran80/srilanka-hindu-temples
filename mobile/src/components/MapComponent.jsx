@@ -5,41 +5,42 @@ import { MapContainer, Marker, Popup, Tooltip, useMapEvents, useMap, TileLayer }
 import 'leaflet/dist/leaflet.css';
 import './MapComponent.css';
 
-// Import marker icons for mobile compatibility
-import markerIcon from '/images/marker-icon-green.png';
-import markerIconRetina from '/images/marker-icon-2x-green.png';
-import markerShadow from '/images/marker-shadow.png';
+// Try to use default Leaflet markers first - they should work on mobile
+// If custom icons fail to load, the map will still show with default markers
+let greenIcon, selectedIcon;
 
-// Use default marker icons with imported assets
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIconRetina,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-  iconSize: [20, 32],
-  iconAnchor: [10, 32],
-  popupAnchor: [0, -32],
-  shadowSize: [32, 32],
-});
+try {
+  // Import marker icons for mobile compatibility
+  const markerIcon = '/images/marker-icon-green.png';
+  const markerIconRetina = '/images/marker-icon-2x-green.png';
+  const markerShadow = '/images/marker-shadow.png';
 
-// Create icons for markers
-const greenIcon = new L.Icon({
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-  iconSize: [20, 32],
-  iconAnchor: [10, 32],
-  popupAnchor: [0, -32],
-  shadowSize: [32, 32],
-});
+  // Create icons for markers
+  greenIcon = new L.Icon({
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+    iconSize: [20, 32],
+    iconAnchor: [10, 32],
+    popupAnchor: [0, -32],
+    shadowSize: [32, 32],
+  });
 
-const selectedIcon = new L.Icon({
-  iconUrl: markerIconRetina,
-  shadowUrl: markerShadow,
-  iconSize: [30, 48], // Larger size for selected
-  iconAnchor: [15, 48],
-  popupAnchor: [0, -48],
-  shadowSize: [48, 48],
-});
+  selectedIcon = new L.Icon({
+    iconUrl: markerIconRetina,
+    shadowUrl: markerShadow,
+    iconSize: [30, 48], // Larger size for selected
+    iconAnchor: [15, 48],
+    popupAnchor: [0, -48],
+    shadowSize: [48, 48],
+  });
+
+  console.log('✅ Custom marker icons loaded successfully');
+} catch (error) {
+  console.warn('⚠️ Custom marker icons failed to load, using defaults:', error);
+  // Use default Leaflet icons if custom ones fail
+  greenIcon = new L.Icon.Default();
+  selectedIcon = new L.Icon.Default();
+}
 
 import TempleDetail from './TempleDetail';
 import { API_BASE_URL } from '../Constants';
@@ -148,6 +149,10 @@ const MapComponent = () => {
   const [submittingTemple, setSubmittingTemple] = useState(false);
   const [addTempleMessage, setAddTempleMessage] = useState('');
   const [addTempleMessageType, setAddTempleMessageType] = useState('');
+  const [hotelSearchResults, setHotelSearchResults] = useState([]);
+  const [showHotelResults, setShowHotelResults] = useState(false);
+  const [searchingHotels, setSearchingHotels] = useState(false);
+  const [hotelSearchError, setHotelSearchError] = useState('');
 
   const markersRef = useRef({});
   const mapRef = useRef(null);
@@ -160,14 +165,20 @@ const MapComponent = () => {
       setIsRefreshing(true);
     }
 
+    console.log('🔄 Fetching initial temples from:', `${API_BASE_URL}/api/temples_initial.ts`);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/temples_initial.ts`);
+      console.log('📡 API Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Temples loaded:', data.length);
         setTemples(data);
         setHasAttemptedInitialLoad(true);
       } else {
-        throw new Error('API not available');
+        console.error('❌ API Response not OK:', response.status, response.statusText);
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching initial temples:', error);
@@ -393,6 +404,76 @@ const MapComponent = () => {
       setSuggestNameMessageType('error');
     } finally {
       setSubmittingSuggestedName(false);
+    }
+  };
+
+  const searchHotelsNearTemple = async (temple) => {
+    setSearchingHotels(true);
+    setHotelSearchError('');
+    setHotelSearchResults([]);
+    setShowHotelResults(false);
+
+    try {
+      // Create a location string from temple data
+      const location = temple.location || `${temple.latitude}, ${temple.longitude}`;
+
+      // Calculate dates (tomorrow and day after)
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const checkin = tomorrow.toISOString().split('T')[0];
+
+      const checkout = new Date(tomorrow);
+      checkout.setDate(checkout.getDate() + 1);
+      const checkoutDate = checkout.toISOString().split('T')[0];
+
+      const response = await fetch(`${API_BASE_URL}/api/hotels/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          location: location,
+          checkin: checkin,
+          checkout: checkoutDate,
+          adults: 2,
+          children: 0,
+          rooms: 1,
+          page: 1
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.hotels && data.hotels.length > 0) {
+          setHotelSearchResults(data.hotels);
+          setShowHotelResults(true);
+        } else {
+          setHotelSearchError('No hotels found in this area.');
+        }
+      } else {
+        const errorData = await response.json();
+        setHotelSearchError(errorData.error || 'Failed to search hotels. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error searching hotels:', error);
+      setHotelSearchError('Error searching hotels. Please check your connection and try again.');
+    } finally {
+      setSearchingHotels(false);
+    }
+  };
+
+  const getHotelAffiliateLink = async (hotelId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/hotels/${hotelId}/link`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.url) {
+          // Open the affiliate link in a new tab
+          window.open(data.url, '_blank');
+        }
+      }
+    } catch (error) {
+      console.error('Error getting affiliate link:', error);
     }
   };
 
@@ -670,12 +751,27 @@ const MapComponent = () => {
 
   const sriLankaCenter = [7.8731, 80.7718];
 
-  console.log('Rendering MapComponent, temples:', temples, 'loading:', loading);
+  console.log('🗺️ Rendering MapComponent, temples:', temples.length, 'loading:', loading);
 
   const idFor = (temple) => String(temple.id ?? '');
 
     return (
       <div className="map-component">
+        {/* Debug Info */}
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '5px 10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 1000
+        }}>
+          Temples: {temples.length} | Loading: {loading ? 'Yes' : 'No'}
+        </div>
+
         {/* Offline Status Bar */}
         {!isOnline && (
           <div className="offline-status-bar">
@@ -683,318 +779,370 @@ const MapComponent = () => {
           </div>
         )}
 
-        {/* Always show map and search functionality */}
-      {!loading && (
+        {/* Show map immediately - don't wait for loading to complete */}
         <>
           {/* Always show map and search functionality */}
-          <>
-            <div className="search-and-controls">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search temples by name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <button
-                className={`add-temple-button ${addTempleMode ? 'active' : ''}`}
-                onClick={() => setAddTempleMode(!addTempleMode)}
-                title={addTempleMode ? 'Cancel adding temple' : 'Add a new temple'}
-              >
-                {addTempleMode ? '❌ Cancel' : '➕ Add Temple'}
-              </button>
-            </div>
-            {addTempleMode && (
-              <div className="add-temple-instructions">
-                📍 Click on the map to select the temple location
-              </div>
-            )}
-            {showDropdown && (
-              <ul className="search-dropdown">
-                {searchResults.map((temple) => (
-                  <li key={temple.id} onClick={() => selectTemple(temple)}>
-                    <div>{temple.name}</div>
-                    {temple.location && <div>{temple.location}</div>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <MapContainer
-              center={sriLankaCenter}
-              zoom={7}
-              zoomControl={false}
-              scrollWheelZoom={isOnline}
-              doubleClickZoom={isOnline}
-              boxZoom={isOnline}
-              touchZoom={isOnline}
-              dragging={true}
-              keyboard={isOnline}
-              className="map-container"
+          <div className="search-and-controls">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search temples by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button
+              className={`add-temple-button ${addTempleMode ? 'active' : ''}`}
+              onClick={() => setAddTempleMode(!addTempleMode)}
+              title={addTempleMode ? 'Cancel adding temple' : 'Add a new temple'}
             >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                maxZoom={19}
-                minZoom={3}
-                crossOrigin="anonymous"
-              />
-              <MapController flyToPosition={flyToPosition} onMapReady={handleMapReady} onFlyToComplete={handleFlyToComplete} isFlyingRef={isFlyingRef} />
-              <MapEventHandler
-                onBoundsChange={handleBoundsChange}
-                onZoomChange={handleZoomChange}
-                onMapInteraction={handleMapInteraction}
-                onMapClick={handleMapClick}
-                onMapClickInAddMode={handleMapClickInAddMode}
-                addTempleMode={addTempleMode}
-                isFlyingRef={isFlyingRef}
-              />
-              {temples.map((temple) => (
-              <Marker
-                key={temple.id}
-                position={[temple.latitude, temple.longitude]}
-                ref={(el) => { markersRef.current[temple.id] = el; }}
-                className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
-                eventHandlers={{
-                  click: () => setSelectedMarkerId(idFor(temple)),
-                }}
-              >
-                <Tooltip>{temple.name}</Tooltip>
-                <Popup maxWidth={250} minWidth={200} autoPan={false}>
-                  <div className="popup-content">
-                    <h3 className="popup-heading">{temple.name}</h3>
-                    <p className="popup-location">{temple.location}</p>
-                    <div className="popup-button-group">
-                      <button className="popup-button" onClick={async () => {
-                        // Fetch fresh temple data before opening details
-                        const freshTemple = await fetchTempleById(idFor(temple));
-                        setSelectedTemple(freshTemple || temple);
-                      }}>View Details</button>
-                      <button className="popup-button" onClick={() => {
-                        setShowCommentForm(true);
-                        setCommentText('');
-                      }}>Add Comment</button>
-                    </div>
-                    <div className="popup-button-group">
-                      <button className="popup-button" onClick={() => {
-                        setShowSuggestNameForm(true);
-                        setSuggestedNameText('');
-                      }}>Suggest Name</button>
-                    </div>
-                    {showCommentForm && selectedMarkerId === idFor(temple) && (
-                      <div className="popup-form-container">
-                        <textarea
-                          className="popup-textarea"
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          placeholder="Enter your comment..."
-                          rows={3}
-                          disabled={submittingComment}
-                        />
-                        <div className="form-button-group">
-                          <button
-                            className="form-submit-button"
-                            onClick={() => submitComment(idFor(temple), commentText)}
-                            disabled={submittingComment || !commentText.trim()}
-                          >
-                            {submittingComment ? 'Submitting...' : 'Submit'}
-                          </button>
-                          <button
-                            className="form-cancel-button"
-                            onClick={() => {
-                              setShowCommentForm(false);
-                              setCommentText('');
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
-                      <div className="popup-form-container">
-                        <input
-                          type="text"
-                          className="popup-input"
-                          value={suggestedNameText}
-                          onChange={(e) => setSuggestedNameText(e.target.value)}
-                          placeholder="Enter suggested temple name..."
-                          disabled={submittingSuggestedName}
-                        />
-                        <div className="form-button-group">
-                          <button
-                            className="form-submit-button"
-                            onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
-                            disabled={submittingSuggestedName || !suggestedNameText.trim()}
-                          >
-                            {submittingSuggestedName ? 'Submitting...' : 'Submit'}
-                          </button>
-                          <button
-                            className="form-cancel-button"
-                            onClick={() => {
-                              setShowSuggestNameForm(false);
-                              setSuggestedNameText('');
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {commentMessage && selectedMarkerId === idFor(temple) && (
-                      <div className={`message-box ${commentMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                        {commentMessage}
-                      </div>
-                    )}
-                    {suggestNameMessage && selectedMarkerId === idFor(temple) && (
-                      <div className={`message-box ${suggestNameMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                        {suggestNameMessage}
-                      </div>
-                    )}
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-
-          {/* Add Temple Form */}
-          {showAddTempleForm && (
-            <div className="add-temple-overlay">
-              <div className="add-temple-form">
-                <h3>Add New Temple</h3>
-                <div className="form-group">
-                  <label>Temple Name *</label>
-                  <input
-                    type="text"
-                    value={newTempleData.name}
-                    onChange={(e) => setNewTempleData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter temple name"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Location</label>
-                  <input
-                    type="text"
-                    value={newTempleData.location}
-                    onChange={(e) => setNewTempleData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="City, District"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea
-                    value={newTempleData.description}
-                    onChange={(e) => setNewTempleData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe the temple..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Deity</label>
-                    <input
-                      type="text"
-                      value={newTempleData.deity}
-                      onChange={(e) => setNewTempleData(prev => ({ ...prev, deity: e.target.value }))}
-                      placeholder="e.g., Shiva, Vishnu"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Temple Type</label>
-                    <select
-                      value={newTempleData.temple_type}
-                      onChange={(e) => setNewTempleData(prev => ({ ...prev, temple_type: e.target.value }))}
-                    >
-                      <option value="">Select type</option>
-                      <option value="hindu_temple">Hindu Temple</option>
-                      <option value="kovil">Kovil</option>
-                      <option value="shrine">Shrine</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>District</label>
-                  <input
-                    type="text"
-                    value={newTempleData.district}
-                    onChange={(e) => setNewTempleData(prev => ({ ...prev, district: e.target.value }))}
-                    placeholder="e.g., Colombo, Kandy"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Photos</label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => setSelectedPhotoFiles(Array.from(e.target.files || []))}
-                    disabled={uploadingPhotos}
-                  />
-                  {selectedPhotoFiles.length > 0 && (
-                    <div className="photo-count">{selectedPhotoFiles.length} photo(s) selected</div>
-                  )}
-                </div>
-
-                {selectedLocation && (
-                  <div className="location-info">
-                    📍 Location: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-                  </div>
-                )}
-
-                {addTempleMessage && (
-                  <div className={`message-box ${addTempleMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                    {addTempleMessage}
-                  </div>
-                )}
-
-                <div className="form-actions">
-                  <button
-                    className="submit-button"
-                    onClick={submitNewTemple}
-                    disabled={submittingTemple || !newTempleData.name.trim()}
-                  >
-                    {submittingTemple ? 'Submitting...' : 'Submit Temple'}
-                  </button>
-                  <button
-                    className="cancel-button"
-                    onClick={() => {
-                      setShowAddTempleForm(false);
-                      setSelectedLocation(null);
-                      setNewTempleData({
-                        name: '',
-                        location: '',
-                        description: '',
-                        deity: '',
-                        temple_type: '',
-                        district: '',
-                        photos: []
-                      });
-                      setSelectedPhotoFiles([]);
-                      setAddTempleMessage('');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+              {addTempleMode ? '❌ Cancel' : '➕ Add Temple'}
+            </button>
+          </div>
+          {addTempleMode && (
+            <div className="add-temple-instructions">
+              📍 Click on the map to select the temple location
             </div>
           )}
-        </>
+          {showDropdown && (
+            <ul className="search-dropdown">
+              {searchResults.map((temple) => (
+                <li key={temple.id} onClick={() => selectTemple(temple)}>
+                  <div>{temple.name}</div>
+                  {temple.location && <div>{temple.location}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <MapContainer
+            center={sriLankaCenter}
+            zoom={7}
+            zoomControl={false}
+            scrollWheelZoom={isOnline}
+            doubleClickZoom={isOnline}
+            boxZoom={isOnline}
+            touchZoom={isOnline}
+            dragging={true}
+            keyboard={isOnline}
+            className="map-container"
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              maxZoom={19}
+              minZoom={3}
+              crossOrigin="anonymous"
+            />
+            <MapController flyToPosition={flyToPosition} onMapReady={handleMapReady} onFlyToComplete={handleFlyToComplete} isFlyingRef={isFlyingRef} />
+            <MapEventHandler
+              onBoundsChange={handleBoundsChange}
+              onZoomChange={handleZoomChange}
+              onMapInteraction={handleMapInteraction}
+              onMapClick={handleMapClick}
+              onMapClickInAddMode={handleMapClickInAddMode}
+              addTempleMode={addTempleMode}
+              isFlyingRef={isFlyingRef}
+            />
+            {temples.map((temple) => (
+            <Marker
+              key={temple.id}
+              position={[temple.latitude, temple.longitude]}
+              ref={(el) => { markersRef.current[temple.id] = el; }}
+              className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
+              eventHandlers={{
+                click: () => setSelectedMarkerId(idFor(temple)),
+              }}
+            >
+              <Tooltip>{temple.name}</Tooltip>
+              <Popup maxWidth={250} minWidth={200} autoPan={false}>
+                <div className="popup-content">
+                  <h3 className="popup-heading">{temple.name}</h3>
+                  <p className="popup-location">{temple.location}</p>
+                  <div className="popup-button-group">
+                    <button className="popup-button" onClick={async () => {
+                      // Fetch fresh temple data before opening details
+                      const freshTemple = await fetchTempleById(idFor(temple));
+                      setSelectedTemple(freshTemple || temple);
+                    }}>View Details</button>
+                    <button className="popup-button" onClick={() => {
+                      setShowCommentForm(true);
+                      setCommentText('');
+                    }}>Add Comment</button>
+                  </div>
+                  <div className="popup-button-group">
+                    <button className="popup-button" onClick={() => {
+                      setShowSuggestNameForm(true);
+                      setSuggestedNameText('');
+                    }}>Suggest Name</button>
+                    <button
+                      className="popup-button"
+                      onClick={() => searchHotelsNearTemple(temple)}
+                      disabled={searchingHotels}
+                    >
+                      {searchingHotels ? '🔍 Searching...' : '🏨 Find Hotels'}
+                    </button>
+                  </div>
+                  {showCommentForm && selectedMarkerId === idFor(temple) && (
+                    <div className="popup-form-container">
+                      <textarea
+                        className="popup-textarea"
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder="Enter your comment..."
+                        rows={3}
+                        disabled={submittingComment}
+                      />
+                      <div className="form-button-group">
+                        <button
+                          className="form-submit-button"
+                          onClick={() => submitComment(idFor(temple), commentText)}
+                          disabled={submittingComment || !commentText.trim()}
+                        >
+                          {submittingComment ? 'Submitting...' : 'Submit'}
+                        </button>
+                        <button
+                          className="form-cancel-button"
+                          onClick={() => {
+                            setShowCommentForm(false);
+                            setCommentText('');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
+                    <div className="popup-form-container">
+                      <input
+                        type="text"
+                        className="popup-input"
+                        value={suggestedNameText}
+                        onChange={(e) => setSuggestedNameText(e.target.value)}
+                        placeholder="Enter suggested temple name..."
+                        disabled={submittingSuggestedName}
+                      />
+                      <div className="form-button-group">
+                        <button
+                          className="form-submit-button"
+                          onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
+                          disabled={submittingSuggestedName || !suggestedNameText.trim()}
+                        >
+                          {submittingSuggestedName ? 'Submitting...' : 'Submit'}
+                        </button>
+                        <button
+                          className="form-cancel-button"
+                          onClick={() => {
+                            setShowSuggestNameForm(false);
+                            setSuggestedNameText('');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {commentMessage && selectedMarkerId === idFor(temple) && (
+                    <div className={`message-box ${commentMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                      {commentMessage}
+                    </div>
+                  )}
+                  {suggestNameMessage && selectedMarkerId === idFor(temple) && (
+                    <div className={`message-box ${suggestNameMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                      {suggestNameMessage}
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+
+        {/* Add Temple Form */}
+        {showAddTempleForm && (
+          <div className="add-temple-overlay">
+            <div className="add-temple-form">
+              <h3>Add New Temple</h3>
+              <div className="form-group">
+                <label>Temple Name *</label>
+                <input
+                  type="text"
+                  value={newTempleData.name}
+                  onChange={(e) => setNewTempleData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter temple name"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Location</label>
+                <input
+                  type="text"
+                  value={newTempleData.location}
+                  onChange={(e) => setNewTempleData(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="City, District"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={newTempleData.description}
+                  onChange={(e) => setNewTempleData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe the temple..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Deity</label>
+                  <input
+                    type="text"
+                    value={newTempleData.deity}
+                    onChange={(e) => setNewTempleData(prev => ({ ...prev, deity: e.target.value }))}
+                    placeholder="e.g., Shiva, Vishnu"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Temple Type</label>
+                  <select
+                    value={newTempleData.temple_type}
+                    onChange={(e) => setNewTempleData(prev => ({ ...prev, temple_type: e.target.value }))}
+                  >
+                    <option value="">Select type</option>
+                    <option value="hindu_temple">Hindu Temple</option>
+                    <option value="kovil">Kovil</option>
+                    <option value="shrine">Shrine</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>District</label>
+                <input
+                  type="text"
+                  value={newTempleData.district}
+                  onChange={(e) => setNewTempleData(prev => ({ ...prev, district: e.target.value }))}
+                  placeholder="e.g., Colombo, Kandy"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Photos</label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => setSelectedPhotoFiles(Array.from(e.target.files || []))}
+                  disabled={uploadingPhotos}
+                />
+                {selectedPhotoFiles.length > 0 && (
+                  <div className="photo-count">{selectedPhotoFiles.length} photo(s) selected</div>
+                )}
+              </div>
+
+              {selectedLocation && (
+                <div className="location-info">
+                  📍 Location: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                </div>
+              )}
+
+              {addTempleMessage && (
+                <div className={`message-box ${addTempleMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                  {addTempleMessage}
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button
+                  className="submit-button"
+                  onClick={submitNewTemple}
+                  disabled={submittingTemple || !newTempleData.name.trim()}
+                >
+                  {submittingTemple ? 'Submitting...' : 'Submit Temple'}
+                </button>
+                <button
+                  className="cancel-button"
+                  onClick={() => {
+                    setShowAddTempleForm(false);
+                    setSelectedLocation(null);
+                    setNewTempleData({
+                      name: '',
+                      location: '',
+                      description: '',
+                      deity: '',
+                      temple_type: '',
+                      district: '',
+                      photos: []
+                    });
+                    setSelectedPhotoFiles([]);
+                    setAddTempleMessage('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {selectedTemple && (
           <TempleDetail
             temple={selectedTemple}
             onClose={() => setSelectedTemple(null)}
           />
         )}
-      </>
-    )}
+
+        {/* Hotel Search Results */}
+        {showHotelResults && (
+          <div className="hotel-results-overlay">
+            <div className="hotel-results-modal">
+              <div className="hotel-results-header">
+                <h3>🏨 Hotels near temple</h3>
+                <button
+                  className="close-button"
+                  onClick={() => setShowHotelResults(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="hotel-results-content">
+                {hotelSearchResults.map((hotel, index) => (
+                  <div key={hotel.id || index} className="hotel-item">
+                    <div className="hotel-info">
+                      <h4>{hotel.name}</h4>
+                      <p className="hotel-location">{hotel.locationSummary}</p>
+                      <div className="hotel-details">
+                        <span className="hotel-rating">⭐ {hotel.rating}</span>
+                        {hotel.freeCancellation && (
+                          <span className="hotel-free-cancellation">🆓 Free cancellation</span>
+                        )}
+                      </div>
+                      <div className="hotel-price">
+                        <strong>{hotel.priceDisplay}</strong>
+                      </div>
+                    </div>
+                    <button
+                      className="book-hotel-button"
+                      onClick={() => getHotelAffiliateLink(hotel.id)}
+                    >
+                      Book Now
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hotel Search Error */}
+        {hotelSearchError && selectedMarkerId && (
+          <div className="hotel-error-message">
+            {hotelSearchError}
+          </div>
+        )}
+        </>
   </div>
   );
 };
