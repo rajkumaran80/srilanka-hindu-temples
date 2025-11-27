@@ -22,7 +22,7 @@ const sriLankaDistricts = [
 ];
 
 // --- Custom Icon Creation (Kept as is) ---
-let createTempleIcon, createSelectedTempleIcon, createTourStopIcon, createStartDistrictIcon, createEndDistrictIcon;
+let createTempleIcon, createSelectedTempleIcon, createTourStopIcon, createStartDistrictIcon, createEndDistrictIcon, createLegInfoIcon;
 
 try {
   const markerIconTemple = '/images/marker-icon-gold.png';
@@ -94,6 +94,25 @@ try {
     iconAnchor: [9, 30],
     popupAnchor: [0, -30],
   });
+
+  createLegInfoIcon = (distance, time) => {
+    const totalMinutes = Math.round(time * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    return new L.DivIcon({
+      html: `
+        <div class="leg-info-marker" style="color: red; background: white; border: 1px solid red; border-radius: 4px; padding: 2px;">
+          <div class="leg-distance">${Math.round(distance * 10) / 10} km</div>
+          <div class="leg-time">${timeStr}</div>
+        </div>
+      `,
+      className: 'custom-leg-info-marker',
+      iconSize: [60, 30],
+      iconAnchor: [30, 15],
+      popupAnchor: [0, -15],
+    });
+  };
 } catch (error) {
   console.warn('Custom icons failed to load, using defaults:', error);
   createTempleIcon = (name) => new L.Icon.Default();
@@ -101,6 +120,7 @@ try {
   createTourStopIcon = (num, name) => new L.Icon.Default();
   createStartDistrictIcon = (name) => new L.Icon.Default();
   createEndDistrictIcon = (name) => new L.Icon.Default();
+  createLegInfoIcon = (dist, time) => new L.Icon.Default();
 }
 
 
@@ -362,34 +382,34 @@ const TourPlanner = () => {
 
       // Process segments for per-leg distance/time
       const segments = routeData.segments.map((segment, index) => {
-          
-          // Determine the names of the locations for this segment
-          const templeIndexOffset = startCoords ? 1 : 0;
-          
-          let fromName = startDistrict;
-          if (index > 0) {
-              fromName = routeSequence[index - templeIndexOffset]?.name || routeSequence[index - templeIndexOffset];
-          }
+        let fromName, toName;
 
-          let toName = endDistrict;
-          if (index < routeData.segments.length - 1) {
-              toName = routeSequence[index + 1 - templeIndexOffset]?.name || routeSequence[index + 1 - templeIndexOffset];
-          }
+        if (index === 0) {
+          fromName = startDistrict;
+          toName = routeSequence[0]?.name || 'Temple';
+        } else if (index === routeData.segments.length - 1 && startDistrict !== endDistrict) {
+          fromName = routeSequence[index - 1]?.name || 'Temple';
+          toName = endDistrict;
+        } else {
+          fromName = routeSequence[index - 1]?.name || 'Temple';
+          toName = routeSequence[index]?.name || 'Temple';
+        }
 
-          return {
-              from: fromName,
-              to: toName,
-              distance: segment.distance, // in km
-              duration: segment.duration / 3600 // in hours
-          };
+        return {
+          from: fromName,
+          to: toName,
+          distance: segment.distance, // in km
+          duration: segment.duration / 3600 // in hours
+        };
       });
 
       return {
-        route: routeSequence, 
-        totalDistance: Math.round(routeData.summary.distance * 10) / 10, 
-        estimatedTime: Math.round(routeData.summary.duration / 3600 * 10) / 10, 
-        polyline: routeData.geometry, 
-        segments: segments.filter(s => s.distance > 0.01), 
+        route: routeSequence,
+        totalDistance: Math.round(routeData.summary.distance * 10) / 10,
+        estimatedTime: Math.round(routeData.summary.duration / 3600 * 10) / 10,
+        polyline: routeData.geometry,
+        segments: segments.filter(s => s.distance > 0.01),
+        coordinates: coordinates,
         startDistrict,
         endDistrict
       };
@@ -630,7 +650,7 @@ const TourPlanner = () => {
               ))}
 
               {/* Draw complete route using ORS Polyline */}
-              <RouteLine tourPlan={tourPlan} decodePolyline={decodePolyline} />
+              <RouteLine tourPlan={tourPlan} decodePolyline={decodePolyline} createLegInfoIcon={createLegInfoIcon} />
             </MapContainer>
 
             <div className="journey-details-below">
@@ -733,9 +753,9 @@ const EndDistrictMarker = ({ endDistrict, createEndDistrictIcon, districtCenters
   );
 };
 
-const RouteLine = ({ tourPlan, decodePolyline }) => {
-  const { polyline } = tourPlan;
-  
+const RouteLine = ({ tourPlan, decodePolyline, createLegInfoIcon }) => {
+  const { polyline, segments, coordinates } = tourPlan;
+
   if (!polyline) return null;
 
   const positions = decodePolyline(polyline);
@@ -743,12 +763,28 @@ const RouteLine = ({ tourPlan, decodePolyline }) => {
   if (positions.length <= 1) return null;
 
   return (
-    <Polyline
-      positions={positions}
-      color="#e74c3c" 
-      weight={5}
-      opacity={0.9}
-    />
+    <>
+      <Polyline
+        positions={positions}
+        color="#e74c3c"
+        weight={5}
+        opacity={0.9}
+      />
+      {segments.map((segment, index) => {
+        const coord1 = coordinates[index];
+        const coord2 = coordinates[index + 1];
+        if (!coord1 || !coord2) return null;
+        const midLat = (coord1[1] + coord2[1]) / 2;
+        const midLng = (coord1[0] + coord2[0]) / 2;
+        return (
+          <Marker
+            key={`leg-${index}`}
+            position={[midLat, midLng]}
+            icon={createLegInfoIcon(segment.distance, segment.duration)}
+          />
+        );
+      })}
+    </>
   );
 };
 
