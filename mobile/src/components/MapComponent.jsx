@@ -142,16 +142,6 @@ const MapComponent = () => {
   const [flyToPosition, setFlyToPosition] = useState(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   const [mapInteractionByUser, setMapInteractionByUser] = useState(true);
-  const [showCommentForm, setShowCommentForm] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [commentMessage, setCommentMessage] = useState('');
-  const [commentMessageType, setCommentMessageType] = useState(''); // 'success' or 'error'
-  const [showSuggestNameForm, setShowSuggestNameForm] = useState(false);
-  const [suggestedNameText, setSuggestedNameText] = useState('');
-  const [submittingSuggestedName, setSubmittingSuggestedName] = useState(false);
-  const [suggestNameMessage, setSuggestNameMessage] = useState('');
-  const [suggestNameMessageType, setSuggestNameMessageType] = useState(''); // 'success' or 'error'
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOfflinePopup, setShowOfflinePopup] = useState(!navigator.onLine);
   const [hasAttemptedInitialLoad, setHasAttemptedInitialLoad] = useState(false);
@@ -184,10 +174,6 @@ const MapComponent = () => {
   const minZoomForBoundsLoading = 7; // Only load temples by bounds when zoomed in enough
 
   const fetchInitialTemples = async (isRetry = false) => {
-    if (isRetry) {
-      setIsRefreshing(true);
-    }
-
     console.log('🔄 Fetching initial temples from:', `${API_BASE_URL}/api/temples_initial.ts`);
 
     try {
@@ -208,9 +194,6 @@ const MapComponent = () => {
       setHasAttemptedInitialLoad(true);
     } finally {
       setLoading(false);
-      if (isRetry) {
-        setIsRefreshing(false);
-      }
     }
   };
 
@@ -359,79 +342,7 @@ const MapComponent = () => {
     setSelectedMarkerId(null);
   };
 
-  const submitComment = async (templeId, comment) => {
-    if (!comment.trim()) return;
 
-    setSubmittingComment(true);
-    setCommentMessage('');
-    setCommentMessageType('');
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/add_temple_comment.ts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          templeId: templeId,
-          comment: comment.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        setCommentMessage('Comment added successfully!');
-        setCommentMessageType('success');
-        setCommentText('');
-        setShowCommentForm(false);
-      } else {
-        setCommentMessage('Failed to add comment. Please try again.');
-        setCommentMessageType('error');
-      }
-    } catch (error) {
-      console.error('Error submitting comment:', error);
-      setCommentMessage('Error submitting comment. Please try again.');
-      setCommentMessageType('error');
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
-
-  const submitSuggestedName = async (templeId, suggestedName) => {
-    if (!suggestedName.trim()) return;
-
-    setSubmittingSuggestedName(true);
-    setSuggestNameMessage('');
-    setSuggestNameMessageType('');
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/add_suggested_temple_name.ts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          templeId: templeId,
-          suggestedName: suggestedName.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        setSuggestNameMessage('Suggested name submitted successfully!');
-        setSuggestNameMessageType('success');
-        setSuggestedNameText('');
-        setShowSuggestNameForm(false);
-      } else {
-        setSuggestNameMessage('Failed to submit suggested name. Please try again.');
-        setSuggestNameMessageType('error');
-      }
-    } catch (error) {
-      console.error('Error submitting suggested name:', error);
-      setSuggestNameMessage('Error submitting suggested name. Please try again.');
-      setSuggestNameMessageType('error');
-    } finally {
-      setSubmittingSuggestedName(false);
-    }
-  };
 
   const searchHotelsNearTemple = async (temple) => {
     setSearchingHotels(true);
@@ -773,27 +684,7 @@ const MapComponent = () => {
     });
   }, [selectedMarkerId, temples]);
 
-  // Auto-hide comment messages after 3 seconds
-  useEffect(() => {
-    if (commentMessage) {
-      const timer = setTimeout(() => {
-        setCommentMessage('');
-        setCommentMessageType('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [commentMessage]);
 
-  // Auto-hide suggest name messages after 3 seconds
-  useEffect(() => {
-    if (suggestNameMessage) {
-      const timer = setTimeout(() => {
-        setSuggestNameMessage('');
-        setSuggestNameMessageType('');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [suggestNameMessage]);
 
   function getTempleLevelsForZoom(zoom) {
     if (zoom < 9) {
@@ -929,106 +820,19 @@ const MapComponent = () => {
                   }}
                 >
                   <Tooltip key={`tooltip-${temple.id}-${currentZoom}`} permanent={showPermanentLabel}>{temple.name}</Tooltip>
-                  <Popup maxWidth={250} minWidth={200} autoPan={false}>
-                    <div className="popup-content">
-                      <h3 className="popup-heading">{temple.name}</h3>
-                      <p className="popup-location">{temple.location}</p>
-                      <div className="popup-button-group">
-                        <button className="popup-button" onClick={async () => {
-                          // Fetch fresh temple data before opening details
-                          const freshTemple = await fetchTempleById(idFor(temple));
-                          setSelectedTemple(freshTemple || temple);
-                        }}>View Details</button>
-                        <button className="popup-button" onClick={() => {
-                          setShowCommentForm(true);
-                          setCommentText('');
-                        }}>Add Comment</button>
-                      </div>
-                      <div className="popup-button-group">
-                        <button className="popup-button" onClick={() => {
-                          setShowSuggestNameForm(true);
-                          setSuggestedNameText('');
-                        }}>Suggest Name</button>
-                        {/* <button
-                          className="popup-button"
-                          onClick={() => searchHotelsNearTemple(temple)}
-                          disabled={searchingHotels}
-                        >
-                          {searchingHotels ? '🔍 Searching...' : '🏨 Find Hotels'}
-                        </button> */}
-                      </div>
-                      {showCommentForm && selectedMarkerId === idFor(temple) && (
-                        <div className="popup-form-container">
-                          <textarea
-                            className="popup-textarea"
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Enter your comment..."
-                            rows={3}
-                            disabled={submittingComment}
-                          />
-                          <div className="form-button-group">
-                            <button
-                              className="form-submit-button"
-                              onClick={() => submitComment(idFor(temple), commentText)}
-                              disabled={submittingComment || !commentText.trim()}
-                            >
-                              {submittingComment ? 'Submitting...' : 'Submit'}
-                            </button>
-                            <button
-                              className="form-cancel-button"
-                              onClick={() => {
-                                setShowCommentForm(false);
-                                setCommentText('');
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
-                        <div className="popup-form-container">
-                          <input
-                            type="text"
-                            className="popup-input"
-                            value={suggestedNameText}
-                            onChange={(e) => setSuggestedNameText(e.target.value)}
-                            placeholder="Enter suggested temple name..."
-                            disabled={submittingSuggestedName}
-                          />
-                          <div className="form-button-group">
-                            <button
-                              className="form-submit-button"
-                              onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
-                              disabled={submittingSuggestedName || !suggestedNameText.trim()}
-                            >
-                              {submittingSuggestedName ? 'Submitting...' : 'Submit'}
-                            </button>
-                            <button
-                              className="form-cancel-button"
-                              onClick={() => {
-                                setShowSuggestNameForm(false);
-                                setSuggestedNameText('');
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {commentMessage && selectedMarkerId === idFor(temple) && (
-                        <div className={`message-box ${commentMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                          {commentMessage}
-                        </div>
-                      )}
-                      {suggestNameMessage && selectedMarkerId === idFor(temple) && (
-                        <div className={`message-box ${suggestNameMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                          {suggestNameMessage}
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
+              <Popup maxWidth={250} minWidth={200} autoPan={false}>
+                <div className="popup-content">
+                  <h3 className="popup-heading">{temple.name}</h3>
+                  <p className="popup-location">{temple.location}</p>
+                  <div className="popup-button-group">
+                    <button className="popup-button" onClick={async () => {
+                      // Fetch fresh temple data before opening details
+                      const freshTemple = await fetchTempleById(idFor(temple));
+                      setSelectedTemple(freshTemple || temple);
+                    }}>View Details</button>
+                  </div>
+                </div>
+              </Popup>
                 </Marker>
               );
             })}
