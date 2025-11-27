@@ -7,22 +7,42 @@ import './MapComponent.css';
 
 // Try to use default Leaflet markers first - they should work on mobile
 // If custom icons fail to load, the map will still show with default markers
-let greenIcon, selectedIcon;
+let greenIcon, redIcon, goldIcon, selectedIcon;
 
 try {
   // Import marker icons for mobile compatibility
-  const markerIcon = '/images/marker-icon-green.png';
+  const markerIconGreen = '/images/marker-icon-green.png';
+  const markerIconRed = '/images/marker-icon-red.png';
+  const markerIconGold = '/images/marker-icon-gold.png';
   const markerIconRetina = '/images/marker-icon-2x-green.png';
   const markerShadow = '/images/marker-shadow.png';
 
   // Create icons for markers
   greenIcon = new L.Icon({
-    iconUrl: markerIcon,
+    iconUrl: markerIconGreen,
     shadowUrl: markerShadow,
     iconSize: [20, 32],
     iconAnchor: [10, 32],
     popupAnchor: [0, -32],
     shadowSize: [32, 32],
+  });
+
+  redIcon = new L.Icon({
+    iconUrl: markerIconRed,
+    shadowUrl: markerShadow,
+    iconSize: [20, 32],
+    iconAnchor: [10, 32],
+    popupAnchor: [0, -32],
+    shadowSize: [32, 32],
+  });
+
+  goldIcon = new L.Icon({
+    iconUrl: markerIconGold,
+    shadowUrl: markerShadow,
+    iconSize: [30, 48], // Larger size for selected
+    iconAnchor: [15, 48],
+    popupAnchor: [0, -48],
+    shadowSize: [48, 48],
   });
 
   selectedIcon = new L.Icon({
@@ -39,6 +59,8 @@ try {
   console.warn('⚠️ Custom marker icons failed to load, using defaults:', error);
   // Use default Leaflet icons if custom ones fail
   greenIcon = new L.Icon.Default();
+  redIcon = new L.Icon.Default();
+  goldIcon = new L.Icon.Default();
   selectedIcon = new L.Icon.Default();
 }
 
@@ -79,9 +101,9 @@ const MapEventHandler = ({ onBoundsChange, onZoomChange, onMapInteraction, onMap
     zoomend: () => {
       const zoom = map.getZoom();
       onZoomChange(zoom);
-      // Also trigger bounds change when zoom ends
+      // Also trigger bounds change when zoom ends - pass zoom level directly to avoid async state issues
       const bounds = map.getBounds();
-      onBoundsChange(bounds);
+      onBoundsChange(bounds, zoom);
       // Close popups on zoom if not flying
       if (!isFlyingRef.current) {
         onMapInteraction();
@@ -110,6 +132,7 @@ const MapEventHandler = ({ onBoundsChange, onZoomChange, onMapInteraction, onMap
 const MapComponent = () => {
   const [selectedTemple, setSelectedTemple] = useState(null);
   const [temples, setTemples] = useState([]);
+  const [zoom, setZoom] = useState(7);
   const [loading, setLoading] = useState(true);
   const [loadedBounds, setLoadedBounds] = useState(new Set()); // Track loaded geographic areas
   const [currentZoom, setCurrentZoom] = useState(7);
@@ -158,7 +181,7 @@ const MapComponent = () => {
   const mapRef = useRef(null);
   const isFlyingRef = useRef(false);
   const tileLayerRef = useRef(null);
-  const minZoomForBoundsLoading = 10; // Only load temples by bounds when zoomed in enough
+  const minZoomForBoundsLoading = 8; // Only load temples by bounds when zoomed in enough
 
   const fetchInitialTemples = async (isRetry = false) => {
     if (isRetry) {
@@ -213,8 +236,10 @@ const MapComponent = () => {
         return;
       }
 
+      const allowedLevels = getTempleLevelsForZoom(zoom).join(",");
+
       const response = await fetch(
-        `${API_BASE_URL}/api/temples_load.ts?north=${north}&south=${south}&east=${east}&west=${west}&limit=20`
+        `${API_BASE_URL}/api/temples_load.ts?north=${north}&south=${south}&east=${east}&west=${west}&levels=${allowedLevels}&limit=1000`
       );
 
       if (response.ok) {
@@ -235,15 +260,18 @@ const MapComponent = () => {
     }
   };
 
-  const handleBoundsChange = (bounds) => {
+  const handleBoundsChange = (bounds, zoomLevel = null) => {
+    // Use provided zoom level or current zoom state
+    const zoom = zoomLevel !== null ? zoomLevel : currentZoom;
     // Only load additional temples if zoomed in enough
-    if (currentZoom >= minZoomForBoundsLoading) {
+    if (zoom >= minZoomForBoundsLoading) {
       fetchTemplesByBounds(bounds);
     }
   };
 
   const handleZoomChange = (zoom) => {
     setCurrentZoom(zoom);
+    setZoom(zoom); // Also update the zoom state used in fetchTemplesByBounds
   };
 
   const searchTemplesByName = async (name) => {
@@ -271,9 +299,7 @@ const MapComponent = () => {
       const response = await fetch(`${API_BASE_URL}/api/temples_search_by_id.ts?id=${encodeURIComponent(templeId)}`);
       if (response.ok) {
         const results = await response.json();
-        // Find the temple with matching ID
-        const temple = results.find(t => (t.id) === templeId);
-        return temple;
+        return results;
       }
     } catch (error) {
       console.error('Error fetching temple by ID:', error);
@@ -711,19 +737,41 @@ const MapComponent = () => {
     }
   }, [selectedTemple]);
 
+  // Function to get the appropriate icon for a temple
+  const getTempleIcon = (temple) => {
+    const templeId = String(temple.id ?? '');
+
+    // Selected temple gets gold icon
+    if (templeId === selectedMarkerId) {
+      return goldIcon;
+    }
+
+    // Check temple level
+    const level = temple.level || temple.temple_level || 3; // Default to level 3 if not specified
+
+    // Level 1 or 2 gets red icon
+    if (level === 1 || level === 2) {
+      return redIcon;
+    }
+
+    // Level 3+ gets green icon (default)
+    return greenIcon;
+  };
+
   // Update marker icons when selection changes
   useEffect(() => {
     Object.keys(markersRef.current).forEach(templeId => {
       const marker = markersRef.current[templeId];
       if (marker) {
-        if (templeId === selectedMarkerId) {
-          marker.setIcon(selectedIcon);
-        } else {
-          marker.setIcon(greenIcon);
+        // Find the temple data to determine the correct icon
+        const temple = temples.find(t => String(t.id ?? '') === templeId);
+        if (temple) {
+          const icon = getTempleIcon(temple);
+          marker.setIcon(icon);
         }
       }
     });
-  }, [selectedMarkerId]);
+  }, [selectedMarkerId, temples]);
 
   // Auto-hide comment messages after 3 seconds
   useEffect(() => {
@@ -747,6 +795,23 @@ const MapComponent = () => {
     }
   }, [suggestNameMessage]);
 
+  function getTempleLevelsForZoom(zoom) {
+    if (zoom < 9) {
+      return [1];                       // Show only Level 1
+    } else if (zoom < 12) {
+      return [1, 2];                    // Level 1 + 2
+    } else if (zoom < 13) {
+      return [1, 2, 3];              // Levels 1-4
+    } else if (zoom < 14) {
+      return [1, 2, 3, 4];              // Levels 1-4
+    } else if (zoom < 15) {
+      return [1, 2, 3, 4, 5];        // Levels 1-6
+    } else if (zoom < 16) {
+      return [1, 2, 3, 4, 5, 6, 7];        // Levels 1-6
+    } else {
+      return [1, 2, 3, 4, 5, 6, 7, 8]; // Levels 1-8 (all levels)
+    }
+  }
 
 
   const sriLankaCenter = [7.8731, 80.7718];
@@ -762,14 +827,15 @@ const MapComponent = () => {
           position: 'absolute',
           top: '10px',
           right: '10px',
-          background: 'rgba(0,0,0,0.7)',
+          background: 'rgba(0,0,0,0.8)',
           color: 'white',
-          padding: '5px 10px',
-          borderRadius: '4px',
+          padding: '8px 12px',
+          borderRadius: '6px',
           fontSize: '12px',
-          zIndex: 1000
+          zIndex: 1000,
+          fontFamily: 'monospace'
         }}>
-          Temples: {temples.length} | Loading: {loading ? 'Yes' : 'No'}
+          Zoom: {currentZoom} | Levels: {getTempleLevelsForZoom(currentZoom).join(',')} | Temples: {temples.length}
         </div>
 
         {/* Offline Status Bar */}
@@ -816,6 +882,11 @@ const MapComponent = () => {
           <MapContainer
             center={sriLankaCenter}
             zoom={7}
+            whenCreated={(map) => {
+              map.on("zoomend", () => {
+                setZoom(map.getZoom());
+              });
+            }}
             zoomControl={false}
             scrollWheelZoom={isOnline}
             doubleClickZoom={isOnline}
@@ -846,6 +917,7 @@ const MapComponent = () => {
             <Marker
               key={temple.id}
               position={[temple.latitude, temple.longitude]}
+              icon={getTempleIcon(temple)}
               ref={(el) => { markersRef.current[temple.id] = el; }}
               className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
               eventHandlers={{
@@ -873,13 +945,13 @@ const MapComponent = () => {
                       setShowSuggestNameForm(true);
                       setSuggestedNameText('');
                     }}>Suggest Name</button>
-                    <button
+                    {/* <button
                       className="popup-button"
                       onClick={() => searchHotelsNearTemple(temple)}
                       disabled={searchingHotels}
                     >
                       {searchingHotels ? '🔍 Searching...' : '🏨 Find Hotels'}
-                    </button>
+                    </button> */}
                   </div>
                   {showCommentForm && selectedMarkerId === idFor(temple) && (
                     <div className="popup-form-container">

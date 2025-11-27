@@ -295,7 +295,7 @@ const TempleDetail = ({ temple, onClose }) => {
         <div className="temple-info">
           <h2>{temple.name}</h2>
           <p className="location">{temple.location}</p>
-          <p className="description">{temple.description}</p>
+          {/* <p className="description">{temple.description}</p> */}
         </div>
 
         {photos.length > 0 && (

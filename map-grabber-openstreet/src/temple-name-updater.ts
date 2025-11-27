@@ -1,6 +1,7 @@
 /*
 TypeScript script: for each temple in srilanka-hindu-temples db, find matching temple in hindu-temples db by coordinates.
-Exact match first, then within 10m radius. If matched, add location and temple_name; else delete them.
+- Special case: if temple name starts with 'unnamed' and temple_name is empty, search within 30m radius for a named temple and copy its name
+- Otherwise: exact match first, then within 10m radius. If matched, add location and temple_name; else delete them.
 
 Instructions (set these env vars before running):
 - MONGODB_URI  -> MongoDB connection string
@@ -12,7 +13,8 @@ Run: `npx tsx src/temple-name-updater.ts`
 
 Notes:
 - Processes all temples in srilanka-hindu-temples
-- Searches hindu-temples for exact lat/lon match, then within 10m
+- For unnamed temples with empty temple_name: searches within 30m for named temples
+- For other temples: searches hindu-temples for exact lat/lon match, then within 10m
 - Updates with temple_name and location if found, else unsets them
 */
 
@@ -42,7 +44,7 @@ function cleanLocation(location: string): string {
 }
 
 // Function to find matching temple in hindu-temples db
-async function findMatchingTemple(client: MongoClient, lat: number, lon: number) {
+async function findMatchingTemple(client: MongoClient, lat: number, lon: number, searchRadius: number = 0.0001) {
   const hinduDb = client.db(HINDU_TEMPLE_DB);
   const hinduCol = hinduDb.collection('temples');
 
@@ -50,11 +52,10 @@ async function findMatchingTemple(client: MongoClient, lat: number, lon: number)
   const exact = await hinduCol.findOne({ latitude: lat, longitude: lon });
   if (exact) return exact;
 
-  // Then, within 10m radius (approx 0.0001 degrees)
-  const radius = 0.0001;
+  // Then, within specified radius
   const query = {
-    latitude: { $gte: lat - radius, $lte: lat + radius },
-    longitude: { $gte: lon - radius, $lte: lon + radius }
+    latitude: { $gte: lat - searchRadius, $lte: lat + searchRadius },
+    longitude: { $gte: lon - searchRadius, $lte: lon + searchRadius }
   };
 
   const temples = await hinduCol.find(query).toArray();
@@ -95,6 +96,28 @@ async function main() {
     const lon = doc.longitude;
     console.log(`Processing temple: ${doc.name} at ${lat}, ${lon}`);
 
+    // Special case: if name starts with 'unnamed' and temple_name is empty, search within 30m
+    if (doc.name && doc.name.toLowerCase().startsWith('unnamed') && (!doc.temple_name || doc.temple_name.trim() === '')) {
+      console.log('Temple name starts with "unnamed" and temple_name is empty, searching within 30m...');
+      // 30 meters ≈ 0.00027 degrees
+      const thirtyMeterRadius = 0.00027;
+      const nearbyTemple = await findMatchingTemple(client, lat, lon, thirtyMeterRadius);
+
+      if (nearbyTemple && nearbyTemple.name && !nearbyTemple.name.toLowerCase().startsWith('unnamed')) {
+        const templeName = nearbyTemple.name || nearbyTemple.temple_name;
+        const update = {
+          $set: {
+            temple_name: templeName
+          }
+        };
+
+        await sriCol.updateOne({ _id: doc._id }, update);
+        console.log(`Updated temple_name with nearby temple: ${templeName}`);
+        updatedCount++;
+        continue; // Skip the rest of the processing for this temple
+      }
+    }
+
     const matchingTemple = await findMatchingTemple(client, lat, lon);
     if (matchingTemple) {
       const templeName = matchingTemple.name || matchingTemple.temple_name;
@@ -113,18 +136,7 @@ async function main() {
       await sriCol.updateOne({ _id: doc._id }, update);
       console.log(`Updated with name: ${templeName}, location: ${location}`);
       updatedCount++;
-    } else {
-      // Unset temple_name and location
-      const update = {
-        $unset: {
-          temple_name: '',
-          location: ''
-        }
-      };
-      await sriCol.updateOne({ _id: doc._id }, update);
-      console.log('Unset temple_name and location');
-      unsetCount++;
-    }
+    } 
 
     // Small delay to avoid overwhelming DB
     await new Promise(resolve => setTimeout(resolve, 100));

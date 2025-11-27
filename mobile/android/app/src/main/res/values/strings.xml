@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Sri Lanka Hindu Temples</string>
-    <string name="title_activity_main">Sri Lanka Hindu Temples</string>
-    <string name="package_name">srilankan.hindu.temples</string>
-    <string name="custom_url_scheme">srilankan.hindu.temples</string>
-</resources>
