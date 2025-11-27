@@ -535,14 +535,6 @@ const TourPlanner = () => {
 
   return (
     <div className="tour-planner">
-      {/* App Header */}
-      <header className="app-header">
-        <h1 className="app-title">Sri Lanka Hindu Temples</h1>
-        <div className="header-buttons">
-          <button className="header-button active">Map View</button>
-          <button className="header-button">Planner</button>
-        </div>
-      </header>
 
       {/* --- Stage 1: District Selection Modal --- */}
       <DistrictSelectionModal

@@ -752,7 +752,7 @@ const MapComponent = () => {
               onClick={() => setAddTempleMode(!addTempleMode)}
               title={addTempleMode ? 'Cancel adding temple' : 'Add a new temple'}
             >
-              {addTempleMode ? '❌ Cancel' : '➕ Add Temple'}
+              {addTempleMode ? '❌ Cancel' : '➕'}
             </button>
           </div>
           {addTempleMode && (
