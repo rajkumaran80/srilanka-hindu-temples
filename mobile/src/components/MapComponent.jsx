@@ -824,6 +824,17 @@ const MapComponent = () => {
                 <div className="popup-content">
                   <h3 className="popup-heading">{temple.name}</h3>
                   <p className="popup-location">{temple.location}</p>
+                  {temple.rating !== undefined && temple.rating !== null && (
+                    <div className="popup-rating">
+                      <div className="star-rating-display">
+                        <span className="stars">
+                          {'★'.repeat(Math.floor(temple.rating))}
+                          {temple.rating % 1 >= 0.5 ? '☆' : ''}
+                        </span>
+                        <span className="rating-value">{temple.rating.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="popup-button-group">
                     <button className="popup-button" onClick={async () => {
                       // Fetch fresh temple data before opening details

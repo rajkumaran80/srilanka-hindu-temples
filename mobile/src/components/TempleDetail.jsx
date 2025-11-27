@@ -21,6 +21,11 @@ const TempleDetail = ({ temple, onClose }) => {
   const [submittingSuggestedName, setSubmittingSuggestedName] = useState(false);
   const [suggestNameMessage, setSuggestNameMessage] = useState('');
   const [suggestNameMessageType, setSuggestNameMessageType] = useState(''); // 'success' or 'error'
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingMessage, setRatingMessage] = useState('');
+  const [ratingMessageType, setRatingMessageType] = useState(''); // 'success' or 'error'
 
   const photos = temple.photos || [];
 
@@ -120,6 +125,17 @@ const TempleDetail = ({ temple, onClose }) => {
     }
   }, [suggestNameMessage]);
 
+  // Auto-hide rating messages after 3 seconds
+  useEffect(() => {
+    if (ratingMessage) {
+      const timer = setTimeout(() => {
+        setRatingMessage('');
+        setRatingMessageType('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [ratingMessage]);
+
   const submitComment = async () => {
     if (!commentText.trim()) return;
 
@@ -128,12 +144,13 @@ const TempleDetail = ({ temple, onClose }) => {
     setCommentMessageType('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/add_temple_comment.ts`, {
+      const response = await fetch(`${API_BASE_URL}/api/update_temple.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          operation: 'comment',
           templeId: temple.id,
           comment: commentText.trim(),
         }),
@@ -165,12 +182,13 @@ const TempleDetail = ({ temple, onClose }) => {
     setSuggestNameMessageType('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/add_suggested_temple_name.ts`, {
+      const response = await fetch(`${API_BASE_URL}/api/update_temple.ts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          operation: 'suggest_name',
           templeId: temple.id,
           suggestedName: suggestedNameText.trim(),
         }),
@@ -191,6 +209,48 @@ const TempleDetail = ({ temple, onClose }) => {
       setSuggestNameMessageType('error');
     } finally {
       setSubmittingSuggestedName(false);
+    }
+  };
+
+  const submitRating = async () => {
+    if (rating === 0) {
+      setRatingMessage('Please select at least one star.');
+      setRatingMessageType('error');
+      return;
+    }
+
+    setSubmittingRating(true);
+    setRatingMessage('');
+    setRatingMessageType('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/update_temple.ts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          operation: 'rating',
+          templeId: temple.id,
+          rating: rating,
+        }),
+      });
+
+      if (response.ok) {
+        setRatingMessage(`Rating of ${rating} star${rating > 1 ? 's' : ''} submitted successfully!`);
+        setRatingMessageType('success');
+        setRating(0);
+        setHoverRating(0);
+      } else {
+        setRatingMessage('Failed to submit rating. Please try again.');
+        setRatingMessageType('error');
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      setRatingMessage('Error submitting rating. Please try again.');
+      setRatingMessageType('error');
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -554,6 +614,41 @@ const TempleDetail = ({ temple, onClose }) => {
                 </div>
 
                 <div className="action-group">
+                  <h4>Rate Temple</h4>
+                  <div className="rating-section">
+                    <p>Rate this temple based on popularity:</p>
+                    <div className="star-rating">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`star ${star <= (hoverRating || rating) ? 'filled' : ''}`}
+                          onClick={() => setRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          disabled={submittingRating}
+                          aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    {rating > 0 && (
+                      <div className="rating-display">
+                        {rating} star{rating > 1 ? 's' : ''} selected
+                      </div>
+                    )}
+                    <button
+                      className="submit-rating-btn"
+                      onClick={submitRating}
+                      disabled={rating === 0 || submittingRating}
+                    >
+                      {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="action-group">
                   <h4>Suggest Name</h4>
                   {!showSuggestNameForm ? (
                     <button
@@ -633,11 +728,16 @@ const TempleDetail = ({ temple, onClose }) => {
                   )}
                 </div>
 
-                {(uploadMessage || commentMessage || suggestNameMessage) && (
+                {(uploadMessage || commentMessage || suggestNameMessage || ratingMessage) && (
                   <div className="messages-section">
                     {uploadMessage && (
                       <div className={`message-box ${uploadMessageType === 'success' ? 'message-success' : 'message-error'}`}>
                         {uploadMessage}
+                      </div>
+                    )}
+                    {ratingMessage && (
+                      <div className={`message-box ${ratingMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                        {ratingMessage}
                       </div>
                     )}
                     {commentMessage && (

@@ -57,6 +57,7 @@ const presignedUploadPhotoHandler: VercelHandler = (await import('./api/presigne
 const addUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo.js')).default;
 const addTempleHandler: VercelHandler = (await import('./api/add_temple.js')).default;
 const addSuggestedTempleUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo_to_suggested_temple.js')).default;
+const updateTempleHandler: VercelHandler = (await import('./api/update_temple.js')).default;
 
 // Helper function to convert Express req/res to Vercel format
 function createVercelRequest(req: Request): VercelRequest {
@@ -139,6 +140,12 @@ app.post('/api/add_unapproved_photo_to_suggested_temple.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
   const vercelRes = createVercelResponse(res);
   addSuggestedTempleUnapprovedPhotoHandler(vercelReq, vercelRes);
+});
+
+app.post('/api/update_temple.ts', (req, res) => {
+  const vercelReq = createVercelRequest(req);
+  const vercelRes = createVercelResponse(res);
+  updateTempleHandler(vercelReq, vercelRes);
 });
 
 

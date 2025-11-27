@@ -21,6 +21,7 @@ interface TempleDocument {
   district?: string;
   suburb?: string;
   village?: string;
+  rating?: number;
   tags?: {
     amenity?: string;
     check_date?: string;
@@ -46,6 +47,7 @@ interface Temple {
   temple_name?: string;
   suburb?: string;
   village?: string;
+  rating?: number;
   [key: string]: any;
 }
 
@@ -98,6 +100,7 @@ function convertTempleDocumentToTemple(doc: TempleDocument): Temple {
     description: doc.description || `OSM ID: ${doc.osm_id}, Type: ${doc.osm_type}, Source: ${doc.source}`,
     level: doc.level,
     deity: doc.deity,
+    rating: doc.rating,
   };
 }
 
