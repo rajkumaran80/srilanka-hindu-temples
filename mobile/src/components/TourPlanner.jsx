@@ -766,7 +766,7 @@ const RouteLine = ({ tourPlan, decodePolyline, createLegInfoIcon }) => {
     <>
       <Polyline
         positions={positions}
-        color="#e74c3c"
+        color="#0000FF"
         weight={5}
         opacity={0.9}
       />
