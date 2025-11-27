@@ -198,10 +198,12 @@ const TourPlanner = () => {
   const [startDistrict, setStartDistrict] = useState('');
   const [endDistrict, setEndDistrict] = useState('');
   // RESTORED: State to hold all temples fetched from the backend
-  const [availableTemples, setAvailableTemples] = useState([]); 
+  const [availableTemples, setAvailableTemples] = useState([]);
   const [selectedTemples, setSelectedTemples] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tourPlan, setTourPlan] = useState(null); 
+  const [tourPlan, setTourPlan] = useState(null);
+  const [optimizeRoute, setOptimizeRoute] = useState(true);
+  const [showRouteSummary, setShowRouteSummary] = useState(false);
 
   // --- Utility Functions (Haversine distance kept for nearest-neighbor optimization) ---
   const calculateDistance = (temple1, temple2) => {
@@ -299,24 +301,28 @@ const TourPlanner = () => {
 
 
   // Step 1: Determine the sequence of temples using local optimization
-  const createTempleSequence = (temples) => {
+  const createTempleSequence = (temples, optimizeRoute) => {
     // Find temples closest to start and end districts
     const startTemple = findTempleClosestToDistrict(temples, startDistrict);
     const endTemple = findTempleClosestToDistrict(temples, endDistrict);
 
     // Get remaining temples (excluding start and end if they're the same)
     let remainingTemples = temples.filter(t => t.id !== startTemple?.id && t.id !== endTemple?.id);
-    
-    // Build the route: Start → Middle temples (optimized) → End
+
+    // Build the route: Start → Middle temples (optimized or as selected) → End
     let route = [];
     if (startTemple) {
       route.push(startTemple);
     }
 
-    // Add remaining temples in optimized order (using nearest neighbor)
+    // Add remaining temples in optimized order (if selected) or as originally selected
     if (remainingTemples.length > 0) {
-      const optimizedMiddle = optimizeRouteWithDestination(remainingTemples);
-      route = route.concat(optimizedMiddle);
+      if (optimizeRoute) {
+        const optimizedMiddle = optimizeRouteWithDestination(remainingTemples);
+        route = route.concat(optimizedMiddle);
+      } else {
+        route = route.concat(remainingTemples);
+      }
     }
 
     // Add end temple if different from start
@@ -436,13 +442,13 @@ const TourPlanner = () => {
   const finishSelection = async () => {
     if (selectedTemples.length === 0) return;
     setLoading(true);
-    
-    // 1. Determine the optimal temple sequence (using local Haversine optimization)
-    const planSequence = createTempleSequence(selectedTemples);
-    
+
+    // 1. Determine the optimal temple sequence (using local Haversine optimization if selected)
+    const planSequence = createTempleSequence(selectedTemples, optimizeRoute);
+
     // 2. Call the ORS API for routing, distance, and time
     const fullTourPlan = await callRoutingAPI(planSequence);
-    
+
     if (fullTourPlan) {
         setTourPlan(fullTourPlan);
     }
@@ -456,8 +462,9 @@ const TourPlanner = () => {
     setEndDistrict('');
     setSelectedTemples([]);
     setTourPlan(null);
+    setOptimizeRoute(true);
     // RESTORED: Reset available temples when starting a new tour
-    setAvailableTemples([]); 
+    setAvailableTemples([]);
   };
 
   return (
@@ -505,6 +512,17 @@ const TourPlanner = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="selector-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={optimizeRoute}
+                      onChange={(e) => setOptimizeRoute(e.target.checked)}
+                    />
+                    Optimize Route (rearrange temples for efficiency)
+                  </label>
                 </div>
               </div>
             </div>
@@ -652,61 +670,77 @@ const TourPlanner = () => {
               {/* Draw complete route using ORS Polyline */}
               <RouteLine tourPlan={tourPlan} decodePolyline={decodePolyline} createLegInfoIcon={createLegInfoIcon} />
             </MapContainer>
-
-            <div className="journey-details-below">
-              <div className="journey-summary">
-                <h3>Journey Summary</h3>
-                <div className="summary-stats">
-                  <div className="stat-item">
-                    <span className="stat-label">Total Temples:</span>
-                    <span className="stat-value">{tourPlan.route.length}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Total Distance:</span>
-                    <span className="stat-value">{tourPlan.totalDistance} km</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Estimated Time:</span>
-                    <span className="stat-value">{tourPlan.estimatedTime} hours</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Route:</span>
-                    <span className="stat-value">{startDistrict} → {endDistrict}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="journey-route">
-                <h3>Detailed Route (Per Leg)</h3>
-                <div className="route-steps">
-                  {/* Iterate over ORS segments for per-leg distance/time */}
-                  {tourPlan.segments.map((segment, index) => (
-                    <div key={index} className="route-step">
-                      <div className="step-number">Leg **#{index + 1}**</div>
-                      <div className="step-content">
-                        <h4>{segment.from} → {segment.to}</h4>
-                        <p className="distance-info">
-                            **Distance:** {Math.round(segment.distance * 10) / 10} km
-                        </p>
-                         <p className="time-info">
-                            **Time:** {Math.round(segment.duration * 60)} minutes ({Math.round(segment.duration * 10) / 10} h)
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="tour-actions">
-            <button className="secondary-button" onClick={() => setTourPlan(null)}>
+            <button className="primary-button" onClick={() => setTourPlan(null)}>
               ← Back to Temple Selection
+            </button>
+            <button className="primary-button" onClick={() => setShowRouteSummary(true)}>
+              Route Summary
             </button>
             <button className="primary-button" onClick={startNewTour}>
               Plan Another Tour
             </button>
           </div>
+
+          {/* Route Summary Popup */}
+          {showRouteSummary && (
+            <div
+              className="route-summary-popup-overlay"
+              onClick={() => setShowRouteSummary(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 1000,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <div
+                className="route-summary-popup"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  backgroundColor: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  maxWidth: '500px',
+                  maxHeight: '80vh',
+                  overflow: 'auto',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Route Summary</h3>
+                <div className="route-steps-popup" style={{ marginBottom: '15px' }}>
+                  {tourPlan.segments.map((segment, index) => (
+                    <div key={index} className="route-step-popup" style={{ marginBottom: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                      <h4 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{segment.from} → {segment.to}</h4>
+                      <p style={{ margin: '2px 0', fontSize: '14px' }}>Distance: {Math.round(segment.distance * 10) / 10} km</p>
+                      <p style={{ margin: '2px 0', fontSize: '14px' }}>Time: {Math.round(segment.duration * 60)} minutes</p>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setShowRouteSummary(false)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
