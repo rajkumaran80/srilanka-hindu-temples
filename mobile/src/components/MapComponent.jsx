@@ -714,7 +714,7 @@ const MapComponent = () => {
     return (
       <div className="map-component">
         {/* Debug Info */}
-        <div style={{
+        {/* <div style={{
           position: 'absolute',
           top: '10px',
           right: '10px',
@@ -727,7 +727,7 @@ const MapComponent = () => {
           fontFamily: 'monospace'
         }}>
           Zoom: {currentZoom} | Levels: {getTempleLevelsForZoom(currentZoom).join(',')} | Temples: {temples.length}
-        </div>
+        </div> */}
 
         {/* Offline Status Bar */}
         {!isOnline && (
