@@ -181,7 +181,7 @@ const MapComponent = () => {
   const mapRef = useRef(null);
   const isFlyingRef = useRef(false);
   const tileLayerRef = useRef(null);
-  const minZoomForBoundsLoading = 8; // Only load temples by bounds when zoomed in enough
+  const minZoomForBoundsLoading = 7; // Only load temples by bounds when zoomed in enough
 
   const fetchInitialTemples = async (isRetry = false) => {
     if (isRetry) {
@@ -221,7 +221,7 @@ const MapComponent = () => {
     fetchInitialTemples(true);
   };
 
-  const fetchTemplesByBounds = async (bounds) => {
+  const fetchTemplesByBounds = async (bounds, zoom) => {
     try {
       const { _northEast, _southWest } = bounds;
       const north = _northEast.lat;
@@ -229,9 +229,9 @@ const MapComponent = () => {
       const east = _northEast.lng;
       const west = _southWest.lng;
 
-      const boundsKey = `${north}-${south}-${east}-${west}`;
+      const boundsKey = `${north}-${south}-${east}-${west}-${zoom}`;
 
-      // Check if we've already loaded temples for this area
+      // Check if we've already loaded temples for this area at this zoom level
       if (loadedBounds.has(boundsKey)) {
         return;
       }
@@ -265,7 +265,7 @@ const MapComponent = () => {
     const zoom = zoomLevel !== null ? zoomLevel : currentZoom;
     // Only load additional temples if zoomed in enough
     if (zoom >= minZoomForBoundsLoading) {
-      fetchTemplesByBounds(bounds);
+      fetchTemplesByBounds(bounds, zoom);
     }
   };
 
@@ -913,120 +913,125 @@ const MapComponent = () => {
               addTempleMode={addTempleMode}
               isFlyingRef={isFlyingRef}
             />
-            {temples.map((temple) => (
-            <Marker
-              key={temple.id}
-              position={[temple.latitude, temple.longitude]}
-              icon={getTempleIcon(temple)}
-              ref={(el) => { markersRef.current[temple.id] = el; }}
-              className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
-              eventHandlers={{
-                click: () => setSelectedMarkerId(idFor(temple)),
-              }}
-            >
-              <Tooltip>{temple.name}</Tooltip>
-              <Popup maxWidth={250} minWidth={200} autoPan={false}>
-                <div className="popup-content">
-                  <h3 className="popup-heading">{temple.name}</h3>
-                  <p className="popup-location">{temple.location}</p>
-                  <div className="popup-button-group">
-                    <button className="popup-button" onClick={async () => {
-                      // Fetch fresh temple data before opening details
-                      const freshTemple = await fetchTempleById(idFor(temple));
-                      setSelectedTemple(freshTemple || temple);
-                    }}>View Details</button>
-                    <button className="popup-button" onClick={() => {
-                      setShowCommentForm(true);
-                      setCommentText('');
-                    }}>Add Comment</button>
-                  </div>
-                  <div className="popup-button-group">
-                    <button className="popup-button" onClick={() => {
-                      setShowSuggestNameForm(true);
-                      setSuggestedNameText('');
-                    }}>Suggest Name</button>
-                    {/* <button
-                      className="popup-button"
-                      onClick={() => searchHotelsNearTemple(temple)}
-                      disabled={searchingHotels}
-                    >
-                      {searchingHotels ? '🔍 Searching...' : '🏨 Find Hotels'}
-                    </button> */}
-                  </div>
-                  {showCommentForm && selectedMarkerId === idFor(temple) && (
-                    <div className="popup-form-container">
-                      <textarea
-                        className="popup-textarea"
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Enter your comment..."
-                        rows={3}
-                        disabled={submittingComment}
-                      />
-                      <div className="form-button-group">
-                        <button
-                          className="form-submit-button"
-                          onClick={() => submitComment(idFor(temple), commentText)}
-                          disabled={submittingComment || !commentText.trim()}
-                        >
-                          {submittingComment ? 'Submitting...' : 'Submit'}
-                        </button>
-                        <button
-                          className="form-cancel-button"
-                          onClick={() => {
-                            setShowCommentForm(false);
-                            setCommentText('');
-                          }}
-                        >
-                          Cancel
-                        </button>
+            {temples.map((temple) => {
+              const templeLevel = temple.level || temple.temple_level || 3;
+              const showPermanentLabel = currentZoom >= 12 && (templeLevel === 1 || templeLevel === 2);
+
+              return (
+                <Marker
+                  key={`${temple.id}-${currentZoom}`}
+                  position={[temple.latitude, temple.longitude]}
+                  icon={getTempleIcon(temple)}
+                  ref={(el) => { markersRef.current[temple.id] = el; }}
+                  className={selectedMarkerId === (temple.id) ? 'selected-marker' : ''}
+                  eventHandlers={{
+                    click: () => setSelectedMarkerId(idFor(temple)),
+                  }}
+                >
+                  <Tooltip key={`tooltip-${temple.id}-${currentZoom}`} permanent={showPermanentLabel}>{temple.name}</Tooltip>
+                  <Popup maxWidth={250} minWidth={200} autoPan={false}>
+                    <div className="popup-content">
+                      <h3 className="popup-heading">{temple.name}</h3>
+                      <p className="popup-location">{temple.location}</p>
+                      <div className="popup-button-group">
+                        <button className="popup-button" onClick={async () => {
+                          // Fetch fresh temple data before opening details
+                          const freshTemple = await fetchTempleById(idFor(temple));
+                          setSelectedTemple(freshTemple || temple);
+                        }}>View Details</button>
+                        <button className="popup-button" onClick={() => {
+                          setShowCommentForm(true);
+                          setCommentText('');
+                        }}>Add Comment</button>
                       </div>
-                    </div>
-                  )}
-                  {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
-                    <div className="popup-form-container">
-                      <input
-                        type="text"
-                        className="popup-input"
-                        value={suggestedNameText}
-                        onChange={(e) => setSuggestedNameText(e.target.value)}
-                        placeholder="Enter suggested temple name..."
-                        disabled={submittingSuggestedName}
-                      />
-                      <div className="form-button-group">
-                        <button
-                          className="form-submit-button"
-                          onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
-                          disabled={submittingSuggestedName || !suggestedNameText.trim()}
+                      <div className="popup-button-group">
+                        <button className="popup-button" onClick={() => {
+                          setShowSuggestNameForm(true);
+                          setSuggestedNameText('');
+                        }}>Suggest Name</button>
+                        {/* <button
+                          className="popup-button"
+                          onClick={() => searchHotelsNearTemple(temple)}
+                          disabled={searchingHotels}
                         >
-                          {submittingSuggestedName ? 'Submitting...' : 'Submit'}
-                        </button>
-                        <button
-                          className="form-cancel-button"
-                          onClick={() => {
-                            setShowSuggestNameForm(false);
-                            setSuggestedNameText('');
-                          }}
-                        >
-                          Cancel
-                        </button>
+                          {searchingHotels ? '🔍 Searching...' : '🏨 Find Hotels'}
+                        </button> */}
                       </div>
+                      {showCommentForm && selectedMarkerId === idFor(temple) && (
+                        <div className="popup-form-container">
+                          <textarea
+                            className="popup-textarea"
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Enter your comment..."
+                            rows={3}
+                            disabled={submittingComment}
+                          />
+                          <div className="form-button-group">
+                            <button
+                              className="form-submit-button"
+                              onClick={() => submitComment(idFor(temple), commentText)}
+                              disabled={submittingComment || !commentText.trim()}
+                            >
+                              {submittingComment ? 'Submitting...' : 'Submit'}
+                            </button>
+                            <button
+                              className="form-cancel-button"
+                              onClick={() => {
+                                setShowCommentForm(false);
+                                setCommentText('');
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {showSuggestNameForm && selectedMarkerId === idFor(temple) && (
+                        <div className="popup-form-container">
+                          <input
+                            type="text"
+                            className="popup-input"
+                            value={suggestedNameText}
+                            onChange={(e) => setSuggestedNameText(e.target.value)}
+                            placeholder="Enter suggested temple name..."
+                            disabled={submittingSuggestedName}
+                          />
+                          <div className="form-button-group">
+                            <button
+                              className="form-submit-button"
+                              onClick={() => submitSuggestedName(idFor(temple), suggestedNameText)}
+                              disabled={submittingSuggestedName || !suggestedNameText.trim()}
+                            >
+                              {submittingSuggestedName ? 'Submitting...' : 'Submit'}
+                            </button>
+                            <button
+                              className="form-cancel-button"
+                              onClick={() => {
+                                setShowSuggestNameForm(false);
+                                setSuggestedNameText('');
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {commentMessage && selectedMarkerId === idFor(temple) && (
+                        <div className={`message-box ${commentMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                          {commentMessage}
+                        </div>
+                      )}
+                      {suggestNameMessage && selectedMarkerId === idFor(temple) && (
+                        <div className={`message-box ${suggestNameMessageType === 'success' ? 'message-success' : 'message-error'}`}>
+                          {suggestNameMessage}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {commentMessage && selectedMarkerId === idFor(temple) && (
-                    <div className={`message-box ${commentMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                      {commentMessage}
-                    </div>
-                  )}
-                  {suggestNameMessage && selectedMarkerId === idFor(temple) && (
-                    <div className={`message-box ${suggestNameMessageType === 'success' ? 'message-success' : 'message-error'}`}>
-                      {suggestNameMessage}
-                    </div>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                  </Popup>
+                </Marker>
+              );
+            })}
         </MapContainer>
 
         {/* Add Temple Form */}
