@@ -802,6 +802,30 @@ const StartDistrictMarker = ({ startDistrict, createStartDistrictIcon, districtC
     >
       <Popup>
         <div className="district-popup">
+          <button
+            className="popup-close-button"
+            onClick={() => {
+              // Close the popup by finding and clicking the leaflet close button
+              const popup = document.querySelector('.leaflet-popup');
+              if (popup) {
+                const closeBtn = popup.querySelector('.leaflet-popup-close-button');
+                if (closeBtn) closeBtn.click();
+              }
+            }}
+            style={{
+              position: 'absolute',
+              top: '5px',
+              right: '5px',
+              background: 'transparent',
+              border: 'none',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: '#666',
+              zIndex: 1000
+            }}
+          >
+            ×
+          </button>
           <h3>🏁 **Start:** {startDistrict} District</h3>
           <p>Your journey begins here</p>
         </div>
@@ -821,6 +845,30 @@ const EndDistrictMarker = ({ endDistrict, createEndDistrictIcon, districtCenters
     >
       <Popup>
         <div className="district-popup">
+          <button
+            className="popup-close-button"
+            onClick={() => {
+              // Close the popup by finding and clicking the leaflet close button
+              const popup = document.querySelector('.leaflet-popup');
+              if (popup) {
+                const closeBtn = popup.querySelector('.leaflet-popup-close-button');
+                if (closeBtn) closeBtn.click();
+              }
+            }}
+            style={{
+              position: 'absolute',
+              top: '5px',
+              right: '5px',
+              background: 'transparent',
+              border: 'none',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: '#666',
+              zIndex: 1000
+            }}
+          >
+            ×
+          </button>
           <h3>🎯 **End:** {endDistrict} District</h3>
           <p>Your journey ends here</p>
         </div>
