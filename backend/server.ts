@@ -8,8 +8,8 @@ dotenv.config();
 
 const app: express.Application = express();
 
-// Middleware to parse JSON
-app.use(express.json());
+// Middleware to parse JSON with increased limit for photo uploads
+app.use(express.json({ limit: '50mb' }));
 
 // CORS configuration
 // Allow origin set via CORS_ORIGIN env var or allow all by default for local development
@@ -55,12 +55,8 @@ const addSuggestedTempleNameHandler: VercelHandler = (await import('./api/add_su
 
 const presignedUploadPhotoHandler: VercelHandler = (await import('./api/presigned_upload_photo.js')).default;
 const addUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo.js')).default;
-
 const addTempleHandler: VercelHandler = (await import('./api/add_temple.js')).default;
-const presignedUploadSuggestedTemplePhotoHandler: VercelHandler = (await import('./api/presigned_upload_photo_to_suggested_temple.js')).default;
 const addSuggestedTempleUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo_to_suggested_temple.js')).default;
-const bookingHotelsSearchHandler: VercelHandler = (await import('./api/booking_hotels_search.js')).default;
-const bookingHotelsLinkHandler: VercelHandler = (await import('./api/booking_hotels_link.js')).default;
 
 // Helper function to convert Express req/res to Vercel format
 function createVercelRequest(req: Request): VercelRequest {
@@ -84,19 +80,6 @@ function createVercelResponse(res: Response): VercelResponse {
   };
   return vercelRes;
 }
-
-// Routes that mimic Vercel API routes
-// app.get('/api/temples', (req, res) => {
-//   const vercelReq = createVercelRequest(req);
-//   const vercelRes = createVercelResponse(res);
-//   templesHandler(vercelReq, vercelRes);
-// });
-
-// app.get('/api/temples_filter', (req, res) => {
-//   const vercelReq = createVercelRequest(req);
-//   const vercelRes = createVercelResponse(res);
-//   templesFilterHandler(vercelReq, vercelRes);
-// });
 
 app.get('/api/temples_initial.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
@@ -152,29 +135,12 @@ app.post('/api/add_temple.ts', (req, res) => {
   addTempleHandler(vercelReq, vercelRes);
 });
 
-app.post('/api/presigned_upload_photo_to_suggested_temple.ts', (req, res) => {
-  const vercelReq = createVercelRequest(req);
-  const vercelRes = createVercelResponse(res);
-  presignedUploadSuggestedTemplePhotoHandler(vercelReq, vercelRes);
-});
-
 app.post('/api/add_unapproved_photo_to_suggested_temple.ts', (req, res) => {
   const vercelReq = createVercelRequest(req);
   const vercelRes = createVercelResponse(res);
   addSuggestedTempleUnapprovedPhotoHandler(vercelReq, vercelRes);
 });
 
-app.post('/api/hotels/search', (req, res) => {
-  const vercelReq = createVercelRequest(req);
-  const vercelRes = createVercelResponse(res);
-  bookingHotelsSearchHandler(vercelReq, vercelRes);
-});
-
-app.get('/api/hotels/:hotelId/link', (req, res) => {
-  const vercelReq = createVercelRequest(req);
-  const vercelRes = createVercelResponse(res);
-  bookingHotelsLinkHandler(vercelReq, vercelRes);
-});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
