@@ -11,6 +11,7 @@ const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjE2Zjd
 const ORS_API_URL = 'https://api.openrouteservice.org/v2/directions/driving-car';
 // Ensure this path correctly points to your API Base URL constant
 import { API_BASE_URL } from '../Constants'; 
+import { SelectedTemplesModal } from './SelectedTempleModel';
 
 
 // Sri Lanka districts for selection
@@ -204,6 +205,7 @@ const TourPlanner = () => {
   const [tourPlan, setTourPlan] = useState(null);
   const [optimizeRoute, setOptimizeRoute] = useState(true);
   const [showRouteSummary, setShowRouteSummary] = useState(false);
+  const [showSelectedTemples, setShowSelectedTemples] = useState(false);
 
   // --- Utility Functions (Haversine distance kept for nearest-neighbor optimization) ---
   const calculateDistance = (temple1, temple2) => {
@@ -243,13 +245,23 @@ const TourPlanner = () => {
     return closestTemple;
   };
 
-  const optimizeRouteWithDestination = (temples) => {
+  const optimizeRouteWithDestination = (temples, startTemple) => {
     if (temples.length <= 1) return temples;
-    
-    // Simple nearest neighbor algorithm (Haversine-based)
+
+    // Find the temple closest to startTemple to start the optimization
+    let startIndex = 0;
+    let minDist = calculateDistance(startTemple, temples[0]);
+    for (let i = 1; i < temples.length; i++) {
+      const dist = calculateDistance(startTemple, temples[i]);
+      if (dist < minDist) {
+        minDist = dist;
+        startIndex = i;
+      }
+    }
+
     const route = [];
     const remaining = [...temples];
-    let currentTemple = remaining.shift();
+    let currentTemple = remaining.splice(startIndex, 1)[0];
     route.push(currentTemple);
 
     while (remaining.length > 0) {
@@ -318,7 +330,7 @@ const TourPlanner = () => {
     // Add remaining temples in optimized order (if selected) or as originally selected
     if (remainingTemples.length > 0) {
       if (optimizeRoute) {
-        const optimizedMiddle = optimizeRouteWithDestination(remainingTemples);
+        const optimizedMiddle = optimizeRouteWithDestination(remainingTemples, startTemple);
         route = route.concat(optimizedMiddle);
       } else {
         route = route.concat(remainingTemples);
@@ -618,46 +630,15 @@ const TourPlanner = () => {
                   );
                 })}
               </MapContainer>
-
-              <div className="selected-temples-list">
-                <h3>Selected Temples ({selectedTemples.length})</h3>
-                {!optimizeRoute && selectedTemples.length > 1 && (
-                  <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
-                    💡 Drag and drop to reorder temples
-                  </p>
-                )}
-                <div className="temples-list">
-                  {selectedTemples.map((temple, index) => (
-                    <div
-                      key={temple.id}
-                      className={`selected-temple-item ${!optimizeRoute ? 'draggable' : ''}`}
-                      draggable={!optimizeRoute}
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, index)}
-                      style={{
-                        cursor: !optimizeRoute ? 'grab' : 'default',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <span className="temple-number">{index + 1}.</span>
-                      <span className="temple-name">{temple.name}</span>
-                      <button
-                        className="remove-button"
-                        onClick={() => handleTempleSelect(temple)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
           <div className="tour-actions">
-            <button className="secondary-button" onClick={() => setShowModal(true)}>
+            <button className="primary-button" onClick={() => setShowModal(true)}>
               ← Back to Districts
+            </button>
+            <button className="primary-button" onClick={() => setShowSelectedTemples(true)} disabled={selectedTemples.length === 0}>
+              Selected Temples ({selectedTemples.length})
             </button>
             <button
               className="primary-button"
@@ -667,7 +648,20 @@ const TourPlanner = () => {
               Finish & Create Journey Plan
             </button>
           </div>
-        </div>
+        
+
+         {/* Render SelectedTemplesModal globally so it can show during selection or after plan created */}
+          <SelectedTemplesModal
+            show={showSelectedTemples}
+            onClose={() => setShowSelectedTemples(false)}
+            selectedTemples={selectedTemples}
+            optimizeRoute={optimizeRoute}
+            handleDragStart={handleDragStart}
+            handleDragOver={handleDragOver}
+            handleDrop={handleDrop}
+            handleTempleSelect={handleTempleSelect}
+          />
+          </div>
       ) : (
         // --- Stage 3: Tour Plan Visualization (KEPT AS IS) ---
         <div>
