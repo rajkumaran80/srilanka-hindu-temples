@@ -12,6 +12,7 @@ const ORS_API_URL = 'https://api.openrouteservice.org/v2/directions/driving-car'
 // Ensure this path correctly points to your API Base URL constant
 import { API_BASE_URL } from '../Constants'; 
 import { SelectedTemplesModal } from './SelectedTempleModel';
+import DistrictSelectionModal from './DistrictSelectionModal';
 
 
 // Sri Lanka districts for selection
@@ -70,31 +71,45 @@ try {
     popupAnchor: [0, -41],
   });
 
-  createStartDistrictIcon = (districtName) => new L.DivIcon({
-    html: `
-      <div class="district-marker start">
-        <img src="/images/marker-icon-start.png" class="district-marker-icon" />
-        <div class="district-marker-name">${districtName}</div>
-      </div>
-    `,
-    className: 'custom-district-marker',
-    iconSize: [18, 30],
-    iconAnchor: [9, 30],
-    popupAnchor: [0, -30],
-  });
+  createStartDistrictIcon = (districtName) => {
+    const img = new Image();
+    img.src = '/images/marker-icon-start.png';
+    img.onload = () => console.log('Start icon loaded');
+    img.onerror = () => console.log('Start icon failed to load');
 
-  createEndDistrictIcon = (districtName) => new L.DivIcon({
-    html: `
-      <div class="district-marker end">
-        <img src="/images/marker-icon-end.png" class="district-marker-icon" />
-        <div class="district-marker-name">${districtName}</div>
-      </div>
-    `,
-    className: 'custom-district-marker',
-    iconSize: [18, 30],
-    iconAnchor: [9, 30],
-    popupAnchor: [0, -30],
-  });
+    return new L.DivIcon({
+      html: `
+        <div class="district-marker start">
+          <img src="/images/marker-icon-start.png" class="district-marker-icon" onerror="this.style.display='none'" />
+          <div class="district-marker-name">${districtName}</div>
+        </div>
+      `,
+      className: 'custom-district-marker',
+      iconSize: [18, 30],
+      iconAnchor: [9, 30],
+      popupAnchor: [0, -30],
+    });
+  };
+
+  createEndDistrictIcon = (districtName) => {
+    const img = new Image();
+    img.src = '/images/marker-icon-end.png';
+    img.onload = () => console.log('End icon loaded');
+    img.onerror = () => console.log('End icon failed to load');
+
+    return new L.DivIcon({
+      html: `
+        <div class="district-marker end">
+          <img src="/images/marker-icon-end.png" class="district-marker-icon" onerror="this.style.display='none'" />
+          <div class="district-marker-name">${districtName}</div>
+        </div>
+      `,
+      className: 'custom-district-marker',
+      iconSize: [18, 30],
+      iconAnchor: [9, 30],
+      popupAnchor: [0, -30],
+    });
+  };
 
   createLegInfoIcon = (distance, time) => {
     const totalMinutes = Math.round(time * 60);
@@ -507,130 +522,63 @@ const TourPlanner = () => {
 
   return (
     <div className="tour-planner">
-      {/* --- Stage 1: District Selection Modal (KEPT AS IS) --- */}
-      {showModal ? (
-        <div className="tour-modal-overlay">
-          <div className="tour-modal">
-            <div className="modal-header">
-              <h2>🗺️ Plan Your Temple Tour</h2>
-              <p>Select your starting and ending districts</p>
-            </div>
-
-            <div className="modal-content">
-              <div className="district-selectors">
-                <div className="selector-group">
-                  <label htmlFor="start-district">Starting District:</label>
-                  <select
-                    id="start-district"
-                    value={startDistrict}
-                    onChange={(e) => setStartDistrict(e.target.value)}
-                    className="district-select"
-                  >
-                    <option value="">Select starting district</option>
-                    {sriLankaDistricts.map((district) => (
-                      <option key={district} value={district}>
-                        {district}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="selector-group">
-                  <label htmlFor="end-district">Ending District:</label>
-                  <select
-                    id="end-district"
-                    value={endDistrict}
-                    onChange={(e) => setEndDistrict(e.target.value)}
-                    className="district-select"
-                  >
-                    <option value="">Select ending district</option>
-                    {sriLankaDistricts.map((district) => (
-                      <option key={district} value={district}>
-                        {district}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="selector-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={optimizeRoute}
-                      onChange={(e) => setOptimizeRoute(e.target.checked)}
-                    />
-                    Optimize Route (rearrange temples for efficiency)
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="primary-button"
-                onClick={proceedToSelection}
-                disabled={!startDistrict || !endDistrict}
-              >
-                Continue to Temple Selection
-              </button>
-            </div>
-          </div>
+      {/* App Header */}
+      <header className="app-header">
+        <h1 className="app-title">Sri Lanka Hindu Temples</h1>
+        <div className="header-buttons">
+          <button className="header-button active">Map View</button>
+          <button className="header-button">Planner</button>
         </div>
-      ) : !tourPlan ? (
-        // --- Stage 2: Temple Selection Map (RESTORED logic for availableTemples) ---
-        <div>
-          <div className="tour-header">
-            <h1>Select Temples for Your Tour</h1>
-            <p>From {startDistrict} to {endDistrict}</p>
-            <p className="selection-count">Selected: {selectedTemples.length} temples</p>
-          </div>
+      </header>
 
+      {/* --- Stage 1: District Selection Modal --- */}
+      <DistrictSelectionModal
+        showModal={showModal}
+        sriLankaDistricts={sriLankaDistricts}
+        startDistrict={startDistrict}
+        setStartDistrict={setStartDistrict}
+        endDistrict={endDistrict}
+        setEndDistrict={setEndDistrict}
+        optimizeRoute={optimizeRoute}
+        setOptimizeRoute={setOptimizeRoute}
+        proceedToSelection={proceedToSelection}
+      />
+
+      {!tourPlan ? (
+        // --- Stage 2: Temple Selection Map (RESTORED logic for availableTemples) ---
+        <div className="temple-selection-container">
           {loading ? (
             // Loading state when fetching temples
             <div className="loading">Loading temples...</div>
           ) : (
-            <div className="temple-selection-container">
-              <MapContainer
-                center={[7.8731, 80.7718]}
-                zoom={8}
-                className="temple-selection-map"
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                />
+            <MapContainer
+              center={[7.8731, 80.7718]}
+              zoom={7}
+              zoomControl={false}
+              className="temple-selection-map"
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
 
-                {/* Iterate over availableTemples for markers */}
-                {availableTemples.map((temple) => {
-                  const isSelected = selectedTemples.find(t => t.id === temple.id);
-                  return (
-                    <Marker
-                      key={temple.id}
-                      position={[temple.latitude, temple.longitude]}
-                      icon={isSelected ? createSelectedTempleIcon(temple.name) : createTempleIcon(temple.name)}
-                      eventHandlers={{
-                        // Handle selection/deselection on click
-                        click: () => handleTempleSelect(temple), 
-                      }}
-                    >
-                      <Popup>
-                        <div className="temple-popup">
-                          <h3>{temple.name}</h3>
-                          <p>{temple.location}</p>
-                          {temple.deity && <p><strong>Deity:</strong> {temple.deity}</p>}
-                          <button
-                            className={`select-button ${isSelected ? 'selected' : ''}`}
-                            onClick={() => handleTempleSelect(temple)}
-                          >
-                            {isSelected ? '✓ Selected' : 'Select for Tour'}
-                          </button>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
-              </MapContainer>
-            </div>
+              {/* Iterate over availableTemples for markers */}
+              {availableTemples.map((temple) => {
+                const isSelected = selectedTemples.find(t => t.id === temple.id);
+                return (
+                  <Marker
+                    key={temple.id}
+                    position={[temple.latitude, temple.longitude]}
+                    icon={isSelected ? createSelectedTempleIcon(temple.name) : createTempleIcon(temple.name)}
+                    eventHandlers={{
+                      // Handle selection/deselection on click
+                      click: () => handleTempleSelect(temple),
+                    }}
+                  >
+                  </Marker>
+                );
+              })}
+            </MapContainer>
           )}
 
           <div className="tour-actions">
@@ -648,7 +596,7 @@ const TourPlanner = () => {
               Finish & Create Journey Plan
             </button>
           </div>
-        
+
 
          {/* Render SelectedTemplesModal globally so it can show during selection or after plan created */}
           <SelectedTemplesModal
@@ -661,52 +609,120 @@ const TourPlanner = () => {
             handleDrop={handleDrop}
             handleTempleSelect={handleTempleSelect}
           />
-          </div>
+        </div>
       ) : (
-        // --- Stage 3: Tour Plan Visualization (KEPT AS IS) ---
-        <div>
-          <div className="tour-header">
-            <h1>🏛️ Your Temple Tour Journey</h1>
-            <p>From **{startDistrict}** to **{endDistrict}** • **{tourPlan.totalDistance} km** • **{tourPlan.estimatedTime} hours**</p>
+        // --- Stage 3: Tour Plan Visualization ---
+        <div className="journey-visualization">
+          {/* Journey Summary Bar */}
+          <div className="journey-summary-bar">
+            🏛️ Journey: {startDistrict} → {endDistrict} • {tourPlan.totalDistance} km • {tourPlan.estimatedTime} hours
           </div>
 
-          <div className="journey-visualization">
-            <MapContainer
-              center={[7.8731, 80.7718]}
-              zoom={8}
-              className="journey-map-full"
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
+          <MapContainer
+            center={[7.8731, 80.7718]}
+            zoom={8}
+            className="journey-map-full"
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
 
-              {/* Start District Marker */}
-              <StartDistrictMarker startDistrict={startDistrict} createStartDistrictIcon={createStartDistrictIcon} districtCenters={districtCenters}/>
+            {/* Start District Marker */}
+            {districtCenters[startDistrict] && (
+              <Marker
+                position={districtCenters[startDistrict]}
+                icon={createStartDistrictIcon(startDistrict)}
+              >
+                <Popup>
+                  <div className="district-popup">
+                    <button
+                      className="popup-close-button"
+                      onClick={() => {
+                        const popup = document.querySelector('.leaflet-popup');
+                        if (popup) {
+                          const closeBtn = popup.querySelector('.leaflet-popup-close-button');
+                          if (closeBtn) closeBtn.click();
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '5px',
+                        right: '5px',
+                        background: 'transparent',
+                        border: 'none',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        color: '#666',
+                        zIndex: 1000
+                      }}
+                    >
+                      ×
+                    </button>
+                    <h3>🏁 Start: {startDistrict} District</h3>
+                    <p>Your journey begins here</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
 
-              {/* End District Marker */}
-              <EndDistrictMarker endDistrict={endDistrict} createEndDistrictIcon={createEndDistrictIcon} districtCenters={districtCenters} />
+            {/* End District Marker */}
+            {districtCenters[endDistrict] && startDistrict !== endDistrict && (
+              <Marker
+                position={districtCenters[endDistrict]}
+                icon={createEndDistrictIcon(endDistrict)}
+              >
+                <Popup>
+                  <div className="district-popup">
+                    <button
+                      className="popup-close-button"
+                      onClick={() => {
+                        const popup = document.querySelector('.leaflet-popup');
+                        if (popup) {
+                          const closeBtn = popup.querySelector('.leaflet-popup-close-button');
+                          if (closeBtn) closeBtn.click();
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '5px',
+                        right: '5px',
+                        background: 'transparent',
+                        border: 'none',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        color: '#666',
+                        zIndex: 1000
+                      }}
+                    >
+                      ×
+                    </button>
+                    <h3>🎯 End: {endDistrict} District</h3>
+                    <p>Your journey ends here</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
 
-              {tourPlan.route.map((temple, index) => (
-                <Marker
-                  key={temple.id}
-                  position={[temple.latitude, temple.longitude]}
-                  icon={createTourStopIcon(index + 1, temple.name)}
-                >
-                  <Popup>
-                    <div className="tour-stop-popup">
-                      <h3>Stop **#{index + 1}**: {temple.name}</h3>
-                      <p>{temple.location}</p>
-                      {temple.deity && <p><strong>Deity:</strong> {temple.deity}</p>}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+            {tourPlan.route.map((temple, index) => (
+              <Marker
+                key={temple.id}
+                position={[temple.latitude, temple.longitude]}
+                icon={createTourStopIcon(index + 1, temple.name)}
+              >
+                <Popup>
+                  <div className="tour-stop-popup">
+                    <h3>Stop **#{index + 1}**: {temple.name}</h3>
+                    <p>{temple.location}</p>
+                    {temple.deity && <p><strong>Deity:</strong> {temple.deity}</p>}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
 
-              {/* Draw complete route using ORS Polyline */}
-              <RouteLine tourPlan={tourPlan} decodePolyline={decodePolyline} createLegInfoIcon={createLegInfoIcon} />
-            </MapContainer>
-          </div>
+            {/* Draw complete route using ORS Polyline */}
+            <RouteLine tourPlan={tourPlan} decodePolyline={decodePolyline} createLegInfoIcon={createLegInfoIcon} />
+          </MapContainer>
 
           <div className="tour-actions">
             <button className="primary-button" onClick={() => setTourPlan(null)}>
@@ -790,92 +806,6 @@ const TourPlanner = () => {
 };
 
 // --- Helper Components ---
-
-const StartDistrictMarker = ({ startDistrict, createStartDistrictIcon, districtCenters }) => {
-  const startCoords = districtCenters[startDistrict];
-  if (!startCoords) return null;
-
-  return (
-    <Marker
-      position={startCoords}
-      icon={createStartDistrictIcon(startDistrict)}
-    >
-      <Popup>
-        <div className="district-popup">
-          <button
-            className="popup-close-button"
-            onClick={() => {
-              // Close the popup by finding and clicking the leaflet close button
-              const popup = document.querySelector('.leaflet-popup');
-              if (popup) {
-                const closeBtn = popup.querySelector('.leaflet-popup-close-button');
-                if (closeBtn) closeBtn.click();
-              }
-            }}
-            style={{
-              position: 'absolute',
-              top: '5px',
-              right: '5px',
-              background: 'transparent',
-              border: 'none',
-              fontSize: '16px',
-              cursor: 'pointer',
-              color: '#666',
-              zIndex: 1000
-            }}
-          >
-            ×
-          </button>
-          <h3>🏁 **Start:** {startDistrict} District</h3>
-          <p>Your journey begins here</p>
-        </div>
-      </Popup>
-    </Marker>
-  );
-};
-
-const EndDistrictMarker = ({ endDistrict, createEndDistrictIcon, districtCenters }) => {
-  const endCoords = districtCenters[endDistrict];
-  if (!endCoords) return null;
-
-  return (
-    <Marker
-      position={endCoords}
-      icon={createEndDistrictIcon(endDistrict)}
-    >
-      <Popup>
-        <div className="district-popup">
-          <button
-            className="popup-close-button"
-            onClick={() => {
-              // Close the popup by finding and clicking the leaflet close button
-              const popup = document.querySelector('.leaflet-popup');
-              if (popup) {
-                const closeBtn = popup.querySelector('.leaflet-popup-close-button');
-                if (closeBtn) closeBtn.click();
-              }
-            }}
-            style={{
-              position: 'absolute',
-              top: '5px',
-              right: '5px',
-              background: 'transparent',
-              border: 'none',
-              fontSize: '16px',
-              cursor: 'pointer',
-              color: '#666',
-              zIndex: 1000
-            }}
-          >
-            ×
-          </button>
-          <h3>🎯 **End:** {endDistrict} District</h3>
-          <p>Your journey ends here</p>
-        </div>
-      </Popup>
-    </Marker>
-  );
-};
 
 const RouteLine = ({ tourPlan, decodePolyline, createLegInfoIcon }) => {
   const { polyline, segments, coordinates } = tourPlan;
