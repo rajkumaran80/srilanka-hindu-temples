@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, Polyline } from 'react-leaflet';
 
@@ -210,17 +210,40 @@ const decodePolyline = (encoded) => {
 
 // --- Main Component ---
 const TourPlanner = () => {
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const [startDistrict, setStartDistrict] = useState('');
   const [endDistrict, setEndDistrict] = useState('');
   // RESTORED: State to hold all temples fetched from the backend
   const [availableTemples, setAvailableTemples] = useState([]);
   const [selectedTemples, setSelectedTemples] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [tourPlan, setTourPlan] = useState(null);
   const [optimizeRoute, setOptimizeRoute] = useState(true);
   const [showRouteSummary, setShowRouteSummary] = useState(false);
   const [showSelectedTemples, setShowSelectedTemples] = useState(false);
+
+  // Load temples on component mount
+  useEffect(() => {
+    const loadTemples = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/temples_load.ts?north=10&south=5.9&east=82&west=79.5&levels=1,2&limit=2000`
+        );
+        if (response.ok) {
+          const temples = await response.json();
+          setAvailableTemples(temples);
+        } else {
+          console.error('Failed to fetch temples:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error loading temples:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTemples();
+  }, []);
 
   // --- Utility Functions (Haversine distance kept for nearest-neighbor optimization) ---
   const calculateDistance = (temple1, temple2) => {
@@ -299,31 +322,21 @@ const TourPlanner = () => {
   
   // --- Core Logic Functions ---
 
-  // RESTORED: Function to fetch temples after district selection
+  // Function to create plan after districts are selected
   const proceedToSelection = async () => {
     if (!startDistrict || !endDistrict) return;
 
     setShowModal(false);
     setLoading(true);
 
-    try {
-      // Load all temples with level 1 or 2 from entire Sri Lanka
-      const response = await fetch(
-        `${API_BASE_URL}/api/temples_load.ts?north=10&south=5.9&east=82&west=79.5&levels=1,2&limit=2000`
-      );
+    // Create journey plan with selected temples and districts
+    const planSequence = createTempleSequence(selectedTemples, optimizeRoute);
+    const fullTourPlan = await callRoutingAPI(planSequence);
 
-      if (response.ok) {
-        const temples = await response.json();
-        setAvailableTemples(temples);
-      } else {
-        console.error('Failed to fetch temples:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error loading temples:', error);
-      alert('Failed to load temples. Check API_BASE_URL and network.');
-    } finally {
-      setLoading(false);
+    if (fullTourPlan) {
+      setTourPlan(fullTourPlan);
     }
+    setLoading(false);
   };
 
 
@@ -542,6 +555,7 @@ const TourPlanner = () => {
         optimizeRoute={optimizeRoute}
         setOptimizeRoute={setOptimizeRoute}
         proceedToSelection={proceedToSelection}
+        onClose={() => setShowModal(false)}
       />
 
       {!tourPlan ? (
@@ -582,18 +596,15 @@ const TourPlanner = () => {
           )}
 
           <div className="tour-actions">
-            <button className="primary-button" onClick={() => setShowModal(true)}>
-              ← Back to Districts
-            </button>
             <button className="primary-button" onClick={() => setShowSelectedTemples(true)} disabled={selectedTemples.length === 0}>
               Selected Temples ({selectedTemples.length})
             </button>
             <button
               className="primary-button"
-              onClick={finishSelection}
+              onClick={() => setShowModal(true)}
               disabled={selectedTemples.length === 0}
             >
-              Finish & Create Journey Plan
+              Continue
             </button>
           </div>
 

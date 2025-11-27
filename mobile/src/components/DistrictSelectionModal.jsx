@@ -1,9 +1,11 @@
-const DistrictSelectionModal = ({ showModal, sriLankaDistricts, startDistrict, setStartDistrict, endDistrict, setEndDistrict, optimizeRoute, setOptimizeRoute, proceedToSelection }) => {
+const DistrictSelectionModal = ({ showModal, sriLankaDistricts, startDistrict, setStartDistrict, endDistrict, setEndDistrict, optimizeRoute, setOptimizeRoute, proceedToSelection, onClose }) => {
   if (!showModal) return null;
 
   return (
-    <div className="tour-modal-overlay">
-      <div className="tour-modal">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="close-btn" onClick={onClose}>×</button>
+
         <div className="modal-header">
           <h2>🗺️ Plan Your Temple Tour</h2>
           <p>Select your starting and ending districts</p>
@@ -64,7 +66,7 @@ const DistrictSelectionModal = ({ showModal, sriLankaDistricts, startDistrict, s
             onClick={proceedToSelection}
             disabled={!startDistrict || !endDistrict}
           >
-            Continue to Temple Selection
+            Continue
           </button>
         </div>
       </div>
