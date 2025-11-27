@@ -438,6 +438,32 @@ const TourPlanner = () => {
     }
   };
 
+  // Handle drag start for reordering temples
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.setData('text/plain', index.toString());
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle drag over
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  // Handle drop for reordering
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+
+    if (dragIndex === dropIndex) return;
+
+    const newTemples = [...selectedTemples];
+    const [draggedItem] = newTemples.splice(dragIndex, 1);
+    newTemples.splice(dropIndex, 0, draggedItem);
+
+    setSelectedTemples(newTemples);
+  };
+
   // Create journey plan when user clicks finish (Updated to use ORS)
   const finishSelection = async () => {
     if (selectedTemples.length === 0) return;
@@ -595,9 +621,25 @@ const TourPlanner = () => {
 
               <div className="selected-temples-list">
                 <h3>Selected Temples ({selectedTemples.length})</h3>
+                {!optimizeRoute && selectedTemples.length > 1 && (
+                  <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+                    💡 Drag and drop to reorder temples
+                  </p>
+                )}
                 <div className="temples-list">
                   {selectedTemples.map((temple, index) => (
-                    <div key={temple.id} className="selected-temple-item">
+                    <div
+                      key={temple.id}
+                      className={`selected-temple-item ${!optimizeRoute ? 'draggable' : ''}`}
+                      draggable={!optimizeRoute}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, index)}
+                      style={{
+                        cursor: !optimizeRoute ? 'grab' : 'default',
+                        userSelect: 'none'
+                      }}
+                    >
                       <span className="temple-number">{index + 1}.</span>
                       <span className="temple-name">{temple.name}</span>
                       <button
