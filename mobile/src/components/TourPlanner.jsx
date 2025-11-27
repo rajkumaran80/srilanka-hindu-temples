@@ -717,13 +717,19 @@ const TourPlanner = () => {
               >
                 <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Route Summary</h3>
                 <div className="route-steps-popup" style={{ marginBottom: '15px' }}>
-                  {tourPlan.segments.map((segment, index) => (
-                    <div key={index} className="route-step-popup" style={{ marginBottom: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
-                      <h4 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{segment.from} → {segment.to}</h4>
-                      <p style={{ margin: '2px 0', fontSize: '14px' }}>Distance: {Math.round(segment.distance * 10) / 10} km</p>
-                      <p style={{ margin: '2px 0', fontSize: '14px' }}>Time: {Math.round(segment.duration * 60)} minutes</p>
-                    </div>
-                  ))}
+                  {tourPlan.segments.map((segment, index) => {
+                    const totalMinutes = Math.round(segment.duration * 60);
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                    return (
+                      <div key={index} className="route-step-popup" style={{ marginBottom: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                        <h4 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{segment.from} → {segment.to}</h4>
+                        <p style={{ margin: '2px 0', fontSize: '14px' }}>Distance: {Math.round(segment.distance * 10) / 10} km</p>
+                        <p style={{ margin: '2px 0', fontSize: '14px' }}>Time: {timeStr}</p>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={() => setShowRouteSummary(false)}
