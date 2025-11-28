@@ -31,6 +31,9 @@ function App() {
         {currentView === 'map' && <MapComponent />}
         {currentView === 'tour' && <TourPlanner />}
       </main>
+      <footer>
+        <p>&copy; 2024 Sri Lanka Hindu Temples App</p>
+      </footer>
     </div>
   );
 }

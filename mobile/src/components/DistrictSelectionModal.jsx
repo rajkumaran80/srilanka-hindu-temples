@@ -46,35 +46,23 @@ const DistrictSelectionModal = ({ showModal, sriLankaDistricts, startDistrict, s
                 ))}
               </select>
             </div>
-
-            <div className="optimization-options">
-              <div className="option-description">
-                <h4>🚀 Optimize Route</h4>
-                <p>Rearrange temples in the most efficient order to minimize travel distance and time.</p>
-              </div>
-
-              <div className="option-description">
-                <h4>📋 Keep Current Order</h4>
-                <p>Maintain the order in which you select temples.</p>
-              </div>
-            </div>
           </div>
         </div>
 
         <div className="modal-actions">
           <button
-            className="secondary-button"
+            className="primary-button"
             onClick={onKeepOrder}
             disabled={!startDistrict || !endDistrict}
           >
-            Keep Current Order
+            📋 Keep Order
           </button>
           <button
             className="primary-button"
             onClick={onOptimize}
             disabled={!startDistrict || !endDistrict}
           >
-            Optimize Route
+            🚀 Optimize
           </button>
         </div>
       </div>

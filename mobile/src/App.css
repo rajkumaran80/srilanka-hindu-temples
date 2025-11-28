@@ -1,8 +1,30 @@
 /* Leaflet CSS */
 @import 'leaflet/dist/leaflet.css';
 
+/* Safe Area Support for iOS devices with notches/home indicators */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-right: env(safe-area-inset-right);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100dvh; /* Dynamic viewport height */
+  overflow-x: hidden;
+}
+
 .App {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh; /* Fit screen height */
 }
 
 header {
@@ -54,7 +76,18 @@ header h1 {
 }
 
 main {
-  height: calc(100vh - 120px);
+  flex: 1;
+  min-height: 0; /* Allow flex item to shrink */
+}
+
+footer {
+  background: #f8f9fa;
+  color: #6c757d;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.8rem;
+  border-top: 1px solid #e9ecef;
+  flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 /* Mobile Responsiveness */
@@ -78,7 +111,7 @@ main {
   }
 
   main {
-    height: calc(100vh - 100px);
+    /* Height handled by flex layout */
   }
 }
 

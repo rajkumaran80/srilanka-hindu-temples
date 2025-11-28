@@ -1,7 +1,7 @@
 /* Main container */
 .map-component {
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -73,7 +73,7 @@
 }
 
 .map-container {
-  height: 100vh;
+  height: 100%;
   width: 100%;
   flex: 1;
 }
@@ -231,9 +231,16 @@
   border: 1px solid #f5c6cb;
 }
 
+@media (max-width: 600px) {
+    .search-and-controls {
+        flex-direction: row !important;
+    }
+}
+
 /* Add Temple Styles */
 .search-and-controls {
   display: flex;
+  flex-direction: row;
   align-items: center;
   margin: 5px;
   position: relative;

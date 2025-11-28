@@ -665,7 +665,7 @@ const TourPlanner = () => {
 
           <div className="tour-actions">
             <button className="primary-button" onClick={() => setShowSelectedTemples(true)} disabled={selectedTemples.length === 0}>
-              Selected Temples ({selectedTemples.length})
+              Temples ({selectedTemples.length})
             </button>
             <button
               className="primary-button"
@@ -691,14 +691,11 @@ const TourPlanner = () => {
       ) : (
         // --- Stage 3: Tour Plan Visualization ---
         <div className="journey-visualization">
-          {/* Journey Summary Bar */}
-          <div className="journey-summary-bar">
-            🏛️ Journey: {startDistrict} → {endDistrict} • {tourPlan.totalDistance} km • {tourPlan.estimatedTime} hours
-          </div>
 
           <MapContainer
             center={[7.8731, 80.7718]}
-            zoom={8}
+            zoom={7}
+            zoomControl={false}
             className="journey-map-full"
           >
             <TileLayer
@@ -846,6 +843,26 @@ const TourPlanner = () => {
                 }}
               >
                 <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Route Summary</h3>
+
+                {/* Journey Summary */}
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  border: '1px solid #e1e8ed',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '10px' }}>🏛️</div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '1.1rem' }}>
+                    Journey: {startDistrict} → {endDistrict}
+                  </h4>
+                  <div style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>
+                    <span style={{ marginRight: '15px' }}>📍 {tourPlan.totalDistance} km</span>
+                    <span>⏱️ {tourPlan.estimatedTime} hours</span>
+                  </div>
+                </div>
+
                 <div className="route-steps-popup" style={{ marginBottom: '15px' }}>
                   {tourPlan.segments.map((segment, index) => {
                     const totalMinutes = Math.round(segment.duration * 60);
