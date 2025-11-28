@@ -27,9 +27,8 @@ const sriLankaDistricts = [
 let createTempleIcon, createSelectedTempleIcon, createTourStopIcon, createStartDistrictIcon, createEndDistrictIcon, createLegInfoIcon;
 
 try {
-  const markerIconTemple = '/images/marker-icon-gold.png';
+  const markerIconTemple = '/images/marker-icon-green.png';
   const markerIconSelected = '/images/marker-icon-red.png';
-  const markerIconTourStop = '/images/marker-icon-green.png';
 
   // Function to create icon with name below
   createTempleIcon = (templeName) => new L.DivIcon({
@@ -40,9 +39,9 @@ try {
       </div>
     `,
     className: 'custom-temple-marker',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [0, -41],
+    iconSize: [20, 35],
+    iconAnchor: [10, 35],
+    popupAnchor: [0, -35],
   });
 
   createSelectedTempleIcon = (templeName) => new L.DivIcon({
@@ -53,9 +52,9 @@ try {
       </div>
     `,
     className: 'custom-temple-marker',
-    iconSize: [30, 48],
-    iconAnchor: [15, 48],
-    popupAnchor: [0, -48],
+    iconSize: [25, 42],
+    iconAnchor: [12, 42],
+    popupAnchor: [0, -42],
   });
 
   createTourStopIcon = (stopNumber, templeName) => new L.DivIcon({
@@ -221,6 +220,7 @@ const TourPlanner = () => {
   const [optimizeRoute, setOptimizeRoute] = useState(true);
   const [showRouteSummary, setShowRouteSummary] = useState(false);
   const [showSelectedTemples, setShowSelectedTemples] = useState(false);
+  const [planningRoute, setPlanningRoute] = useState(false);
 
   // Load temples on component mount
   useEffect(() => {
@@ -342,38 +342,39 @@ const TourPlanner = () => {
 
   // Step 1: Determine the sequence of temples using local optimization
   const createTempleSequence = (temples, optimizeRoute) => {
-    // Find temples closest to start and end districts
-    const startTemple = findTempleClosestToDistrict(temples, startDistrict);
-    const endTemple = findTempleClosestToDistrict(temples, endDistrict);
+    if (optimizeRoute) {
+      // Find temples closest to start and end districts for optimization
+      const startTemple = findTempleClosestToDistrict(temples, startDistrict);
+      const endTemple = findTempleClosestToDistrict(temples, endDistrict);
 
-    // Get remaining temples (excluding start and end if they're the same)
-    let remainingTemples = temples.filter(t => t.id !== startTemple?.id && t.id !== endTemple?.id);
+      // Get remaining temples (excluding start and end if they're the same)
+      let remainingTemples = temples.filter(t => t.id !== startTemple?.id && t.id !== endTemple?.id);
 
-    // Build the route: Start → Middle temples (optimized or as selected) → End
-    let route = [];
-    if (startTemple) {
-      route.push(startTemple);
-    }
+      // Build the route: Start → Middle temples (optimized) → End
+      let route = [];
+      if (startTemple) {
+        route.push(startTemple);
+      }
 
-    // Add remaining temples in optimized order (if selected) or as originally selected
-    if (remainingTemples.length > 0) {
-      if (optimizeRoute) {
+      // Add remaining temples in optimized order
+      if (remainingTemples.length > 0) {
         const optimizedMiddle = optimizeRouteWithDestination(remainingTemples, startTemple);
         route = route.concat(optimizedMiddle);
-      } else {
-        route = route.concat(remainingTemples);
       }
-    }
 
-    // Add end temple if different from start
-    if (endTemple && endTemple.id !== startTemple?.id) {
-      route.push(endTemple);
-    }
+      // Add end temple if different from start
+      if (endTemple && endTemple.id !== startTemple?.id) {
+        route.push(endTemple);
+      }
 
-    // Remove duplicates
-    return route.filter((temple, index, arr) =>
-      arr.findIndex(t => t.id === temple.id) === index
-    );
+      // Remove duplicates
+      return route.filter((temple, index, arr) =>
+        arr.findIndex(t => t.id === temple.id) === index
+      );
+    } else {
+      // Keep Current Order: Use temples in exact order selected by user
+      return [...temples];
+    }
   };
   
   // Step 2: Call ORS API for detailed route, distance, and time
@@ -386,13 +387,13 @@ const TourPlanner = () => {
 
     const coordinates = [];
     // Start District coordinates
-    if (startCoords) coordinates.push([startCoords[1], startCoords[0]]); 
-    
+    if (startCoords) coordinates.push([startCoords[1], startCoords[0]]);
+
     // Temple coordinates
-    routeSequence.forEach(t => coordinates.push([t.longitude, t.latitude])); 
-    
-    // End District coordinates (only if different from start district)
-    if (endCoords && startDistrict !== endDistrict) coordinates.push([endCoords[1], endCoords[0]]); 
+    routeSequence.forEach(t => coordinates.push([t.longitude, t.latitude]));
+
+    // End District coordinates (always include if endCoords exist)
+    if (endCoords) coordinates.push([endCoords[1], endCoords[0]]);
 
     if (coordinates.length < 2) {
       alert("Not enough points (start/end districts or temples) for routing.");
@@ -433,7 +434,7 @@ const TourPlanner = () => {
         if (index === 0) {
           fromName = startDistrict;
           toName = routeSequence[0]?.name || 'Temple';
-        } else if (index === routeData.segments.length - 1 && startDistrict !== endDistrict) {
+        } else if (index === routeData.segments.length - 1) {
           fromName = routeSequence[index - 1]?.name || 'Temple';
           toName = endDistrict;
         } else {
@@ -507,7 +508,7 @@ const TourPlanner = () => {
   // Create journey plan when user clicks finish (Updated to use ORS)
   const finishSelection = async () => {
     if (selectedTemples.length === 0) return;
-    setLoading(true);
+    setPlanningRoute(true);
 
     // 1. Determine the optimal temple sequence (using local Haversine optimization if selected)
     const planSequence = createTempleSequence(selectedTemples, optimizeRoute);
@@ -518,25 +519,91 @@ const TourPlanner = () => {
     if (fullTourPlan) {
         setTourPlan(fullTourPlan);
     }
-    setLoading(false);
+    setPlanningRoute(false);
   };
   
-  // Reset and start new tour (Existing logic)
-  const startNewTour = () => {
-    setShowModal(true);
+  // Reset and start new tour (Updated to show temple selection map and refetch temples)
+  const startNewTour = async () => {
+    setLoading(true); // Show loading state
+    setShowModal(false); // Show temple selection map instead of modal
     setStartDistrict('');
     setEndDistrict('');
     setSelectedTemples([]);
     setTourPlan(null);
     setOptimizeRoute(true);
-    // RESTORED: Reset available temples when starting a new tour
-    setAvailableTemples([]);
+
+    // Refetch temples from API
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/temples_load.ts?north=10&south=5.9&east=82&west=79.5&levels=1,2&limit=2000`
+      );
+      if (response.ok) {
+        const temples = await response.json();
+        setAvailableTemples(temples);
+      } else {
+        console.error('Failed to fetch temples:', response.statusText);
+        setAvailableTemples([]); // Set empty array on error
+      }
+    } catch (error) {
+      console.error('Error loading temples:', error);
+      setAvailableTemples([]); // Set empty array on error
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="tour-planner">
+    <div className="map-component">
 
-      {/* --- Stage 1: District Selection Modal --- */}
+      {/* --- Planning Route Loading Overlay --- */}
+      {planningRoute && (
+        <div
+          className="route-summary-popup-overlay"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(5px)'
+          }}
+        >
+          <div
+            className="route-summary-popup"
+            style={{
+              backgroundColor: 'white',
+              padding: '30px',
+              borderRadius: '15px',
+              textAlign: 'center',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+              maxWidth: '400px'
+            }}
+          >
+            <div style={{ fontSize: '2rem', marginBottom: '15px' }}>🗺️</div>
+            <h3 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>Planning Your Route</h3>
+            <p style={{ margin: '0', color: '#7f8c8d', fontSize: '1rem' }}>
+              Calculating the optimal path for your temple journey...
+            </p>
+            <div style={{
+              marginTop: '20px',
+              width: '40px',
+              height: '40px',
+              border: '4px solid #f3f3f3',
+              borderTop: '4px solid #3498db',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '20px auto 0'
+            }}></div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Stage 1: Combined District Selection & Optimization Modal --- */}
       <DistrictSelectionModal
         showModal={showModal}
         sriLankaDistricts={sriLankaDistricts}
@@ -544,18 +611,27 @@ const TourPlanner = () => {
         setStartDistrict={setStartDistrict}
         endDistrict={endDistrict}
         setEndDistrict={setEndDistrict}
-        optimizeRoute={optimizeRoute}
-        setOptimizeRoute={setOptimizeRoute}
-        proceedToSelection={proceedToSelection}
+        onOptimize={() => {
+          setOptimizeRoute(true);
+          setShowModal(false);
+          finishSelection();
+        }}
+        onKeepOrder={() => {
+          setOptimizeRoute(false);
+          setShowModal(false);
+          finishSelection();
+        }}
         onClose={() => setShowModal(false)}
       />
 
       {!tourPlan ? (
         // --- Stage 2: Temple Selection Map (RESTORED logic for availableTemples) ---
         <div className="temple-selection-container">
-          {loading ? (
-            // Loading state when fetching temples
-            <div className="loading">Loading temples...</div>
+          {loading || planningRoute ? (
+            // Loading state when fetching temples or planning route
+            <div className="loading">
+              {planningRoute ? "🗺️ Planning your optimal route..." : "Loading temples..."}
+            </div>
           ) : (
             <MapContainer
               center={[7.8731, 80.7718]}
@@ -606,7 +682,6 @@ const TourPlanner = () => {
             show={showSelectedTemples}
             onClose={() => setShowSelectedTemples(false)}
             selectedTemples={selectedTemples}
-            optimizeRoute={optimizeRoute}
             handleDragStart={handleDragStart}
             handleDragOver={handleDragOver}
             handleDrop={handleDrop}
@@ -670,7 +745,7 @@ const TourPlanner = () => {
             )}
 
             {/* End District Marker */}
-            {districtCenters[endDistrict] && startDistrict !== endDistrict && (
+            {districtCenters[endDistrict] && (
               <Marker
                 position={districtCenters[endDistrict]}
                 icon={createEndDistrictIcon(endDistrict)}
@@ -729,13 +804,13 @@ const TourPlanner = () => {
 
           <div className="tour-actions">
             <button className="primary-button" onClick={() => setTourPlan(null)}>
-              ← Back to Temple Selection
+              ← 
             </button>
             <button className="primary-button" onClick={() => setShowRouteSummary(true)}>
-              Route Summary
+              Routes
             </button>
             <button className="primary-button" onClick={startNewTour}>
-              Plan Another Tour
+              Reset
             </button>
           </div>
 

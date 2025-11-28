@@ -5,7 +5,6 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  padding-top: 60px; /* Account for fixed header */
 }
 
 /* Offline status bar */
@@ -43,7 +42,7 @@
   position: absolute;
   z-index: 1000;
   width: calc(100% - 10px);
-  top: 40px;
+  top: 50px;
 }
 
 .search-dropdown li {
@@ -235,14 +234,91 @@
 /* Add Temple Styles */
 .search-and-controls {
   display: flex;
-  gap: 5px;
   align-items: center;
   margin: 5px;
+  position: relative;
 }
 
-.search-and-controls .search-input {
+.search-input {
   flex: 1;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px 0 0 4px;
+  border-right: none;
   margin: 0;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: #007bff;
+}
+
+.menu-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 35px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.menu-button:hover {
+  background-color: #0056b3;
+}
+
+.menu-line {
+  width: 16px;
+  height: 2px;
+  background-color: white;
+  margin: 2px 0;
+  transition: all 0.2s;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 35px;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 20000;
+  min-width: 150px;
+  width: 200px;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 15px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f8f9fa;
+}
+
+.menu-item.active {
+  background-color: #dc3545;
+  color: white;
+}
+
+.menu-item.active:hover {
+  background-color: #c82333;
 }
 
 .add-temple-button {

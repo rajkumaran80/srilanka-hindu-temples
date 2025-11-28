@@ -1,4 +1,4 @@
-export const SelectedTemplesModal = ({ show, onClose, selectedTemples, optimizeRoute, handleDragStart, handleDragOver, handleDrop, handleTempleSelect }) => {
+export const SelectedTemplesModal = ({ show, onClose, selectedTemples, handleDragStart, handleDragOver, handleDrop, handleTempleSelect }) => {
   if (!show) return null;
 
   return (
@@ -33,7 +33,7 @@ export const SelectedTemplesModal = ({ show, onClose, selectedTemples, optimizeR
       >
         <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Selected Temples ({selectedTemples.length})</h3>
 
-        {!optimizeRoute && selectedTemples.length > 1 && (
+        {selectedTemples.length > 1 && (
           <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
             💡 Drag and drop to reorder temples
           </p>
@@ -43,12 +43,12 @@ export const SelectedTemplesModal = ({ show, onClose, selectedTemples, optimizeR
           {selectedTemples.map((temple, index) => (
             <div
               key={temple.id}
-              draggable={!optimizeRoute}
+              draggable={true}
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, index)}
               style={{
-                cursor: !optimizeRoute ? 'grab' : 'default',
+                cursor: 'grab',
                 userSelect: 'none',
                 padding: '8px',
                 marginBottom: '5px',

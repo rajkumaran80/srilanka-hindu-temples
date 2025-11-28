@@ -127,11 +127,70 @@
   border-color: #bdc3c7;
 }
 
+.optimization-options {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e1e8ed;
+}
+
+.option-description {
+  margin-bottom: 15px;
+}
+
+.option-description:last-child {
+  margin-bottom: 0;
+}
+
+.option-description h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.option-description p {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .modal-actions {
   padding: 20px 30px 30px;
   border-top: 2px solid #f0f0f0;
   display: flex;
+  flex-direction: row;
   justify-content: center;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.modal-actions .secondary-button,
+.modal-actions .primary-button {
+  flex-shrink: 0;
+}
+
+.secondary-button {
+  padding: 12px 25px;
+  background: white;
+  color: #7f8c8d;
+  border: 2px solid #e1e8ed;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #bdc3c7;
+  transform: translateY(-1px);
 }
 
 /* Header Styles */
@@ -473,19 +532,19 @@
 }
 
 .temple-marker-icon {
-  width: 25px;
-  height: 41px;
+  width: 20px;
+  height: 33px;
   display: block;
 }
 
 .temple-marker.selected .temple-marker-icon {
-  width: 30px;
-  height: 48px;
+  width: 25px;
+  height: 40px;
 }
 
 .temple-marker-name {
   position: absolute;
-  top: 45px;
+  top: 35px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.95);
@@ -504,7 +563,7 @@
 }
 
 .temple-marker.selected .temple-marker-name {
-  top: 52px;
+  top: 42px;
   background: rgba(231, 76, 60, 0.95);
   color: white;
   border-color: #e74c3c;
@@ -656,6 +715,12 @@
   backdrop-filter: blur(10px);
 }
 
+@media (max-width: 768px) {
+  .tour-actions {
+    flex-direction: row !important;
+  }
+}
+
 /* Tour Actions */
 .tour-actions {
   position: fixed;
@@ -663,6 +728,7 @@
   left: 0;
   right: 0;
   display: flex;
+  flex-direction: row;
   gap: 15px;
   justify-content: center;
   padding: 20px;
@@ -672,6 +738,7 @@
   z-index: 1000;
   box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  min-width: 500px;
 }
 
 .primary-button {
@@ -730,6 +797,12 @@
   background: rgba(255, 255, 255, 0.95);
   border-radius: 15px;
   margin: 20px;
+}
+
+/* Loading Spinner Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Mobile Responsiveness */
@@ -818,6 +891,17 @@
   }
 
   .temple-name {
+    font-size: 0.9rem;
+  }
+
+  .tour-modal {
+    min-width: 400px;
+  }
+
+  .modal-actions .secondary-button,
+  .modal-actions .primary-button {
+    min-width: 120px;
+    padding: 10px 15px;
     font-size: 0.9rem;
   }
 }
