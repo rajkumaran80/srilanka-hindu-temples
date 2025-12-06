@@ -315,8 +315,6 @@ const TempleDetail = ({ temple, onClose }) => {
           quality -= 0.1;
         } while (quality > 0.1);
 
-        } while (quality > 0.1);
-
         resolve(compressedDataUrl);
       };
 

@@ -50,8 +50,6 @@ const templesInitialHandler: VercelHandler = (await import('./api/temples_initia
 const templesLoadHandler: VercelHandler = (await import('./api/temples_load.js')).default;
 const templesSearchByNameHandler: VercelHandler = (await import('./api/temples_search_by_name.js')).default;
 const templesSearchByIdHandler: VercelHandler = (await import('./api/temples_search_by_id.js')).default;
-const addTempleCommentHandler: VercelHandler = (await import('./api/add_temple_comment.js')).default;
-const addSuggestedTempleNameHandler: VercelHandler = (await import('./api/add_suggested_temple_name.js')).default;
 
 const presignedUploadPhotoHandler: VercelHandler = (await import('./api/presigned_upload_photo.js')).default;
 const addUnapprovedPhotoHandler: VercelHandler = (await import('./api/add_unapproved_photo.js')).default;

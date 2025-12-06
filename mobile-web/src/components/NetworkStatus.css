@@ -1,0 +1,49 @@
+.network-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.network-indicator {
+  padding: 8px 16px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+.network-indicator.offline {
+  background-color: #f44336;
+  color: white;
+}
+
+.network-indicator.online {
+  background-color: #4caf50;
+  color: white;
+  animation: slideDown 0.3s ease-out, fadeOut 3s ease-in 2.5s forwards;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

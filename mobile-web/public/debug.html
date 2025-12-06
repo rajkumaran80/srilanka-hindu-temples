@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tile Cache Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; }
+        .section { background: white; padding: 15px; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        pre { background: #f0f0f0; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ Tile Cache Debug Console</h1>
+        
+        <div class="section">
+            <h2>Cache Status</h2>
+            <p>Cache count: <strong id="cacheCount">Loading...</strong></p>
+            <p>Storage size: <strong id="storageSize">Loading...</strong></p>
+            <p>Online status: <strong id="onlineStatus">-</strong></p>
+        </div>
+
+        <div class="section">
+            <h2>Actions</h2>
+            <button onclick="updateCacheInfo()">Refresh Stats</button>
+            <button onclick="listCachedTiles()">List Cached Tiles</button>
+            <button onclick="clearAllCache()">Clear All Cache</button>
+            <button onclick="downloadTestTile()">Download Test Tile</button>
+        </div>
+
+        <div class="section">
+            <h2>Console Output</h2>
+            <pre id="console"></pre>
+        </div>
+    </div>
+
+    <script>
+        const DB_NAME = 'SriLankaMapTiles';
+        const STORE_NAME = 'tiles';
+        let db = null;
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            console.innerHTML += `[${timestamp}] <span class="${className}">${message}</span>\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function initializeDB() {
+            return new Promise((resolve, reject) => {
+                if (db) {
+                    resolve(db);
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, 1);
+
+                request.onerror = () => {
+                    log(`❌ Failed to open DB: ${request.error}`, 'error');
+                    reject(request.error);
+                };
+                
+                request.onsuccess = () => {
+                    db = request.result;
+                    log(`✓ Connected to IndexedDB: ${DB_NAME}`, 'success');
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME, { keyPath: 'url' });
+                        log(`✓ Created object store: ${STORE_NAME}`, 'success');
+                    }
+                };
+            });
+        }
+
+        async function updateCacheInfo() {
+            await initializeDB();
+            
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const countRequest = store.count();
+            const getAllRequest = store.getAll();
+
+            countRequest.onsuccess = () => {
+                const count = countRequest.result;
+                document.getElementById('cacheCount').textContent = count;
+                log(`✓ Tiles in cache: ${count}`, 'success');
+            };
+
+            getAllRequest.onsuccess = () => {
+                let totalSize = 0;
+                getAllRequest.result.forEach(item => {
+                    if (item.blob) {
+                        totalSize += item.blob.size;
+                    }
+                });
+                const sizeInMB = (totalSize / 1024 / 1024).toFixed(2);
+                document.getElementById('storageSize').textContent = `${sizeInMB} MB`;
+                log(`✓ Total storage: ${sizeInMB} MB`, 'success');
+            };
+
+            document.getElementById('onlineStatus').textContent = navigator.onLine ? '🟢 Online' : '🔴 Offline';
+        }
+
+        async function listCachedTiles() {
+            await initializeDB();
+            
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const tiles = request.result;
+                log(`📋 Found ${tiles.length} cached tiles`, 'info');
+                if (tiles.length === 0) {
+                    log('No tiles cached yet', 'info');
+                    return;
+                }
+                tiles.slice(0, 10).forEach((tile, idx) => {
+                    const sizeKB = (tile.blob.size / 1024).toFixed(1);
+                    log(`  ${idx + 1}. ${tile.url} (${sizeKB} KB)`, 'info');
+                });
+                if (tiles.length > 10) {
+                    log(`  ... and ${tiles.length - 10} more`, 'info');
+                }
+            };
+        }
+
+        async function clearAllCache() {
+            if (!confirm('Clear all cached tiles? This cannot be undone.')) return;
+            
+            await initializeDB();
+            
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.clear();
+
+            request.onsuccess = () => {
+                log('✓ All cached tiles cleared!', 'success');
+                updateCacheInfo();
+            };
+
+            request.onerror = () => {
+                log(`❌ Failed to clear cache: ${request.error}`, 'error');
+            };
+        }
+
+        async function downloadTestTile() {
+            log('Downloading test tile: https://tile.openstreetmap.org/10/545/348.png', 'info');
+            
+            try {
+                const response = await fetch('https://tile.openstreetmap.org/10/545/348.png');
+                if (!response.ok) {
+                    log(`❌ Failed to download: ${response.status}`, 'error');
+                    return;
+                }
+                
+                const blob = await response.blob();
+                log(`✓ Downloaded test tile (${blob.size} bytes)`, 'success');
+
+                // Try to cache it
+                await initializeDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const putRequest = store.put({
+                    url: 'https://tile.openstreetmap.org/10/545/348.png',
+                    blob: blob,
+                    timestamp: Date.now()
+                });
+
+                putRequest.onsuccess = () => {
+                    log('✓ Cached test tile to IndexedDB', 'success');
+                    updateCacheInfo();
+                };
+
+                putRequest.onerror = () => {
+                    log(`❌ Failed to cache: ${putRequest.error}`, 'error');
+                };
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            log('🚀 Debug console ready', 'success');
+            updateCacheInfo();
+        });
+
+        // Auto-update every 5 seconds
+        setInterval(updateCacheInfo, 5000);
+    </script>
+</body>
+</html>
