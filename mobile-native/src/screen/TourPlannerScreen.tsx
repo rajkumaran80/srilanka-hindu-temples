@@ -579,7 +579,11 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item, index }) => (
               <View style={styles.selectedItem}>
-                <View style={styles.reorderControls}>
+                <View style={styles.templeInfo}>
+                  <Text style={styles.templeName}>{index + 1}. {item.name}</Text>
+                  <Text style={styles.templeLocation}>{item.location}</Text>
+                </View>
+                <View style={styles.actionControls}>
                   <TouchableOpacity
                     style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
                     onPress={() => {
@@ -606,19 +610,15 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
                   >
                     <Text style={[styles.reorderBtnText, index === selectedTemples.length - 1 && styles.reorderBtnTextDisabled]}>↓</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.removeBtn}
+                    onPress={() => {
+                      setSelectedTemples(prev => prev.filter(t => t.id !== item.id));
+                    }}
+                  >
+                    <Text style={styles.removeBtnText}>×</Text>
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.templeInfo}>
-                  <Text style={styles.templeName}>{index + 1}. {item.name}</Text>
-                  <Text style={styles.templeLocation}>{item.location}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.removeBtn}
-                  onPress={() => {
-                    setSelectedTemples(prev => prev.filter(t => t.id !== item.id));
-                  }}
-                >
-                  <Text style={styles.removeBtnText}>×</Text>
-                </TouchableOpacity>
               </View>
             )}
             ListEmptyComponent={
@@ -747,7 +747,18 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, backgroundColor: "#007bff", padding: 12, margin: 6, borderRadius: 8, alignItems: "center" },
   modalBtnText: { color: "#fff", fontWeight: "700" },
 
-  selectedItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  selectedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee"
+  },
+  actionControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
 
   label: { fontWeight: "700", marginBottom: 6 },
 
