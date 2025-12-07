@@ -329,7 +329,7 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tour Plan</Text>
-        <View style={{ width: 60 }} /> 
+        <View style={styles.spacer} />
       </View>
 
       {/* Map Container - takes available space */}
@@ -417,7 +417,7 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
       <View style={styles.footer}>
           <TouchableOpacity style={styles.actionButton} onPress={() => setRouteSummaryVisible(true)}>
             <View style={styles.buttonContent}>
-              <Text style={[styles.buttonText]}>
+              <Text style={styles.buttonText}>
                 Route Summary
               </Text>
             </View>
@@ -428,46 +428,119 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
       </View>
 
-      {/* Route Summary modal (simple overlay, all text inside <Text>) */}
-      <Modal visible={routeSummaryVisible} animationType="slide" onRequestClose={() => setRouteSummaryVisible(false)}>  
+      {/* Route Summary modal with detailed segment information */}
+      <Modal visible={routeSummaryVisible} animationType="slide" onRequestClose={() => setRouteSummaryVisible(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Route Summary</Text>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>🗺️ Route Summary</Text>
+          </View>
 
-          {tourPlan ? (
-            <>
-              <View style={styles.summaryBox}>
+          {planningRoute ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>Planning your route...</Text>
+              <Text style={styles.emptySubtext}>Please wait while we calculate the optimal path.</Text>
+            </View>
+          ) : tourPlan ? (
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Overall Journey Summary */}
+              <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>
-                  Journey: {String(tourPlan.startDistrict ?? '')} → {String(tourPlan.endDistrict ?? '')}
+                  📍 {String(tourPlan.startDistrict ?? 'Start')} → {String(tourPlan.endDistrict ?? 'End')}
                 </Text>
-                <Text>{String(tourPlan.totalDistance)} km</Text> 
-                <Text>{String(tourPlan.estimatedTime)} hours</Text>
+                <View style={styles.summaryStats}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{String(tourPlan.totalDistance)}</Text>
+                    <Text style={styles.statLabel}>km total</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{String(Math.round(tourPlan.estimatedTime * 10) / 10)}</Text>
+                    <Text style={styles.statLabel}>hours</Text>
+                  </View>
+                </View>
+                <Text style={styles.templeCount}>
+                  {Array.isArray(tourPlan.route) ? tourPlan.route.length : 0} temples to visit
+                </Text>
               </View>
 
-              <ScrollView style={{ flex: 1 }}>
-                {Array.isArray(tourPlan.segments) && tourPlan.segments.map((seg, i) => {
-                  const totalMinutes = Math.round((seg.duration || 0) * 60);
-                  const hours = Math.floor(totalMinutes / 60);
-                  const minutes = totalMinutes % 60;
-                  const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-                  return (
-                    <View key={i} style={styles.segmentRow}>
-                      <Text style={{ fontWeight: "600" }}>{String(seg.from)} → {String(seg.to)}</Text>
-                      <Text>Distance: {String(Math.round((seg.distance || 0) * 10) / 10)} km</Text>
-                      <Text>Time: {String(timeStr)}</Text>
+              {/* Detailed Route Segments */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>📋 Route Details</Text>
+              </View>
+
+              {Array.isArray(tourPlan.segments) && tourPlan.segments.map((seg, i) => {
+                const totalMinutes = Math.round((seg.duration || 0) * 60);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                const distance = Math.round((seg.distance || 0) * 10) / 10;
+
+                // Calculate cumulative distance and time up to this segment
+                const cumulativeDistance = tourPlan.segments.slice(0, i + 1).reduce((sum, s) => sum + (s.distance || 0), 0);
+                const cumulativeTime = tourPlan.segments.slice(0, i + 1).reduce((sum, s) => sum + (s.duration || 0), 0);
+
+                return (
+                  <View key={i} style={styles.segmentCard}>
+                    <View style={styles.segmentHeader}>
+                      <View style={styles.stepNumber}>
+                        <Text style={styles.stepNumberText}>{i + 1}</Text>
+                      </View>
+                      <View style={styles.segmentRoute}>
+                        <Text style={styles.segmentFrom}>{String(seg.from)}</Text>
+                        <Text style={styles.segmentArrow}>→</Text>
+                        <Text style={styles.segmentTo}>{String(seg.to)}</Text>
+                      </View>
                     </View>
-                  );
-                })}
-              </ScrollView>
-            </>
+
+                    <View style={styles.segmentDetails}>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Distance:</Text>
+                        <Text style={styles.detailValue}>{distance} km</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Time:</Text>
+                        <Text style={styles.detailValue}>{timeStr}</Text>
+                      </View>
+                      <View style={[styles.detailRow, styles.detailRowLast]}>
+                        <Text style={styles.detailLabel}>Cumulative:</Text>
+                        <Text style={styles.detailValue}>
+                          {Math.round(cumulativeDistance * 10) / 10} km • {Math.round(cumulativeTime * 60)} min
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* Temple List */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>🏛️ Temples to Visit</Text>
+              </View>
+
+              {Array.isArray(tourPlan.route) && tourPlan.route.map((temple, idx) => (
+                <View key={temple.id} style={styles.templeItem}>
+                  <View style={styles.templeNumber}>
+                    <Text style={styles.templeNumberText}>{idx + 1}</Text>
+                  </View>
+                  <View style={styles.templeInfo}>
+                    <Text style={styles.templeName}>{temple.name}</Text>
+                    <Text style={styles.templeLocation}>{temple.location || 'Location not specified'}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
           ) : (
-            <Text>No route planned yet.</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No route planned yet.</Text>
+              <Text style={styles.emptySubtext}>Please select temples and districts to plan your route.</Text>
+            </View>
           )}
 
-          <View style={styles.modalActions}>
+          {/* <View style={styles.modalActions}>
             <TouchableOpacity style={styles.modalBtn} onPress={() => setRouteSummaryVisible(false)}>
               <Text style={styles.modalBtnText}>Close</Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
         </View>
       </Modal>
     </View>
