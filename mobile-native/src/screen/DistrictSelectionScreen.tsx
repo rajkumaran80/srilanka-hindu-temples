@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
+import { districtSelectionStyles as styles } from "../styles/DistrictSelectionStyles";
 
 // Sri Lanka districts
 const sriLankaDistricts = [
@@ -114,7 +115,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
         <Text style={styles.headerTitle}>Choose Districts</Text>
 
         {/* spacer */}
-        <View style={{ width: 60 }} />
+        <View style={styles.spacer} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -124,7 +125,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
           style={styles.pickerWrap}
           onPress={() => setShowStartPicker(true)}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={styles.pickerRow}>
             <Text style={[styles.pickerText, !selectedStartDistrict && styles.placeholderText]}>
               {selectedStartDistrict ? selectedStartDistrict : 'Select start district...'}
             </Text>
@@ -138,7 +139,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
           style={styles.pickerWrap}
           onPress={() => setShowEndPicker(true)}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={styles.pickerRow}>
             <Text style={[styles.pickerText, !selectedEndDistrict && styles.placeholderText]}>
               {selectedEndDistrict ? selectedEndDistrict : 'Select end district...'}
             </Text>
@@ -211,7 +212,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.backButtonText}>← Back</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Select Start District</Text>
-            <View style={{ width: 60 }} />
+            <View style={styles.spacer} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
@@ -250,7 +251,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.backButtonText}>← Back</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Select End District</Text>
-            <View style={{ width: 60 }} />
+            <View style={styles.spacer} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
@@ -283,243 +284,5 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  backButton: {
-    width: 60,
-    alignItems: 'flex-start',
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007bff',
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-    marginTop: 20,
-  },
-  pickerWrap: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  pickerText: {
-    fontSize: 16,
-    color: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flex: 1,
-  },
-  placeholderText: {
-    color: '#999',
-  },
-  dropdownIcon: {
-    fontSize: 14,
-    color: '#666',
-    paddingRight: 16,
-    paddingVertical: 14,
-  },
-  infoContainer: {
-    marginTop: 30,
-  },
-  infoCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: Platform.OS === 'android' ? 54 : 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-  },
-  actionButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 5,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#007bff',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  actionButtonDisabled: {
-    backgroundColor: '#ccc',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#ccc',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionButtonTextDisabled: {
-    color: '#999',
-  },
-  buttonContent: {
-    alignItems: 'center',
-  },
-  buttonEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  buttonEmojiDisabled: {
-    opacity: 0.5,
-  },
-    buttonText: {
-    color: "#fff", 
-    fontWeight: "700" ,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  buttonTextDisabled: {
-    opacity: 0.5,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-  districtOption: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  districtOptionSelected: {
-    backgroundColor: '#e7f3ff',
-  },
-  districtOptionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  districtOptionTextSelected: {
-    color: '#007bff',
-    fontWeight: '600',
-  },
-  checkmark: {
-    fontSize: 18,
-    color: '#007bff',
-    fontWeight: 'bold',
-  },
-});
 
 export default DistrictSelectionScreen;
