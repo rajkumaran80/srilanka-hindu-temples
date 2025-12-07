@@ -760,8 +760,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
+    color: "#fff", 
+    fontWeight: "700" ,
     fontSize: 14,
-    fontWeight: '600',
     textAlign: 'center',
   },
   buttonTextDisabled: {

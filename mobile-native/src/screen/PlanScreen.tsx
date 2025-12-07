@@ -413,16 +413,18 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
 
       {/* Bottom Control Panel */}
-      <View style={styles.bottomPanel}>
-        <View style={styles.controls}>
-          <TouchableOpacity style={styles.controlBtn} onPress={() => setRouteSummaryVisible(true)}>
-            <Text style={styles.controlText}>Route Summary</Text>
+      <View style={styles.footer}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => setRouteSummaryVisible(true)}>
+            <View style={styles.buttonContent}>
+              <Text style={[styles.buttonText]}>
+                Route Summary
+              </Text>
+            </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.controlBtn} onPress={resetPlanner}>
+          <TouchableOpacity style={styles.actionButton} onPress={resetPlanner}>
             <Text style={styles.controlText}>Back to Planner</Text>
           </TouchableOpacity>
-        </View>
       </View>
 
       {/* Route Summary modal (simple overlay, all text inside <Text>) */}
@@ -664,4 +666,77 @@ const styles = StyleSheet.create({
   summaryTitle: { fontWeight: "800", marginBottom: 6 },
 
   segmentRow: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
+
+
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'android' ? 54 : 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+  },
+  actionButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#007bff',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  actionButtonDisabled: {
+    backgroundColor: '#ccc',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#ccc',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  actionButtonTextDisabled: {
+    color: '#999',
+  },
+  buttonContent: {
+    alignItems: 'center',
+  },
+  buttonEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  buttonEmojiDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    color: "#fff", 
+    fontWeight: "700" ,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  buttonTextDisabled: {
+    opacity: 0.5,
+  },
 });

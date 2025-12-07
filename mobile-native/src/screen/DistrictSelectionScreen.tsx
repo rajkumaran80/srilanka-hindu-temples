@@ -463,9 +463,10 @@ const styles = StyleSheet.create({
   buttonEmojiDisabled: {
     opacity: 0.5,
   },
-  buttonText: {
+    buttonText: {
+    color: "#fff", 
+    fontWeight: "700" ,
     fontSize: 14,
-    fontWeight: '600',
     textAlign: 'center',
   },
   buttonTextDisabled: {
