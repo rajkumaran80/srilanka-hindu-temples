@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Modal,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+// import { Picker } from '@react-native-picker/picker';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 
@@ -67,6 +68,8 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const { selectedTemples, startDistrict, endDistrict } = route.params;
   const [selectedStartDistrict, setSelectedStartDistrict] = useState(startDistrict);
   const [selectedEndDistrict, setSelectedEndDistrict] = useState(endDistrict);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const handleOptimizeRoute = () => {
     if (!selectedStartDistrict || !selectedEndDistrict) {
@@ -110,32 +113,26 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>Start District</Text>
-        <View style={styles.pickerWrap}>
-          <Picker
-            selectedValue={selectedStartDistrict}
-            onValueChange={(value) => setSelectedStartDistrict(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select start district..." value="" />
-            {sriLankaDistricts.map(district => (
-              <Picker.Item key={district} label={district} value={district} />
-            ))}
-          </Picker>
-        </View>
+        <TouchableOpacity
+          style={styles.pickerWrap}
+          onPress={() => setShowStartPicker(true)}
+        >
+          <Text style={[styles.pickerText, !selectedStartDistrict && styles.placeholderText]}>
+            {selectedStartDistrict || "Select start district..."}
+          </Text>
+          <Text style={styles.dropdownIcon}>▼</Text>
+        </TouchableOpacity>
 
         <Text style={styles.label}>End District</Text>
-        <View style={styles.pickerWrap}>
-          <Picker
-            selectedValue={selectedEndDistrict}
-            onValueChange={(value) => setSelectedEndDistrict(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select end district..." value="" />
-            {sriLankaDistricts.map(district => (
-              <Picker.Item key={district} label={district} value={district} />
-            ))}
-          </Picker>
-        </View>
+        <TouchableOpacity
+          style={styles.pickerWrap}
+          onPress={() => setShowEndPicker(true)}
+        >
+          <Text style={[styles.pickerText, !selectedEndDistrict && styles.placeholderText]}>
+            {selectedEndDistrict || "Select end district..."}
+          </Text>
+          <Text style={styles.dropdownIcon}>▼</Text>
+        </TouchableOpacity>
 
         {/* District Info Cards */}
         <View style={styles.infoContainer}>
@@ -189,6 +186,82 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Start District Picker Modal */}
+      <Modal visible={showStartPicker} animationType="slide" onRequestClose={() => setShowStartPicker(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowStartPicker(false)} style={styles.backButton}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Start District</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {sriLankaDistricts.map(district => (
+              <TouchableOpacity
+                key={district}
+                style={[
+                  styles.districtOption,
+                  selectedStartDistrict === district && styles.districtOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedStartDistrict(district);
+                  setShowStartPicker(false);
+                }}
+              >
+                <Text style={[
+                  styles.districtOptionText,
+                  selectedStartDistrict === district && styles.districtOptionTextSelected
+                ]}>
+                  {district}
+                </Text>
+                {selectedStartDistrict === district && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* End District Picker Modal */}
+      <Modal visible={showEndPicker} animationType="slide" onRequestClose={() => setShowEndPicker(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowEndPicker(false)} style={styles.backButton}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select End District</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {sriLankaDistricts.map(district => (
+              <TouchableOpacity
+                key={district}
+                style={[
+                  styles.districtOption,
+                  selectedEndDistrict === district && styles.districtOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedEndDistrict(district);
+                  setShowEndPicker(false);
+                }}
+              >
+                <Text style={[
+                  styles.districtOptionText,
+                  selectedEndDistrict === district && styles.districtOptionTextSelected
+                ]}>
+                  {district}
+                </Text>
+                {selectedEndDistrict === district && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -264,8 +337,21 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  picker: {
-    height: 50,
+  pickerText: {
+    fontSize: 16,
+    color: '#333',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flex: 1,
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  dropdownIcon: {
+    fontSize: 14,
+    color: '#666',
+    paddingRight: 16,
+    paddingVertical: 14,
   },
   infoContainer: {
     marginTop: 30,
@@ -342,6 +428,54 @@ const styles = StyleSheet.create({
   },
   actionButtonTextDisabled: {
     color: '#999',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  districtOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  districtOptionSelected: {
+    backgroundColor: '#e7f3ff',
+  },
+  districtOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  districtOptionTextSelected: {
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  checkmark: {
+    fontSize: 18,
+    color: '#007bff',
+    fontWeight: 'bold',
   },
 });
 
