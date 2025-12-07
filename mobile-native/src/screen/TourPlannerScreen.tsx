@@ -565,17 +565,68 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
       {/* Temple Management Modal */}
       <Modal visible={templeManagementVisible} animationType="slide" onRequestClose={() => setTempleManagementVisible(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Selected Temples ({selectedTemples.length})</Text>
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setTempleManagementVisible(false)} style={styles.backButton}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Selected Temples ({selectedTemples.length})</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
           <FlatList
             data={selectedTemples}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item, index }) => (
               <View style={styles.selectedItem}>
-                <Text style={{ fontWeight: "600" }}>{index + 1}. {item.name}</Text>
-                <Text style={{ color: "#666" }}>{item.location}</Text>
+                <View style={styles.reorderControls}>
+                  <TouchableOpacity
+                    style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
+                    onPress={() => {
+                      if (index > 0) {
+                        const newTemples = [...selectedTemples];
+                        [newTemples[index], newTemples[index - 1]] = [newTemples[index - 1], newTemples[index]];
+                        setSelectedTemples(newTemples);
+                      }
+                    }}
+                    disabled={index === 0}
+                  >
+                    <Text style={[styles.reorderBtnText, index === 0 && styles.reorderBtnTextDisabled]}>↑</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.reorderBtn, index === selectedTemples.length - 1 && styles.reorderBtnDisabled]}
+                    onPress={() => {
+                      if (index < selectedTemples.length - 1) {
+                        const newTemples = [...selectedTemples];
+                        [newTemples[index], newTemples[index + 1]] = [newTemples[index + 1], newTemples[index]];
+                        setSelectedTemples(newTemples);
+                      }
+                    }}
+                    disabled={index === selectedTemples.length - 1}
+                  >
+                    <Text style={[styles.reorderBtnText, index === selectedTemples.length - 1 && styles.reorderBtnTextDisabled]}>↓</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.templeInfo}>
+                  <Text style={styles.templeName}>{index + 1}. {item.name}</Text>
+                  <Text style={styles.templeLocation}>{item.location}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeBtn}
+                  onPress={() => {
+                    setSelectedTemples(prev => prev.filter(t => t.id !== item.id));
+                  }}
+                >
+                  <Text style={styles.removeBtnText}>×</Text>
+                </TouchableOpacity>
               </View>
             )}
-            ListEmptyComponent={<Text style={{ padding: 20, textAlign: "center" }}>No temples selected</Text>}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No temples selected</Text>
+                <Text style={styles.emptySubtext}>Go back and tap on temple markers to select them</Text>
+              </View>
+            }
           />
         </View>
       </Modal>
@@ -656,6 +707,7 @@ const styles = StyleSheet.create({
     margin: 20,
     maxHeight: '80%',
     width: '90%',
+    flex: 1,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -667,6 +719,24 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 15,
+  },
+  backButton: {
+    width: 60,
+    alignItems: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#007bff',
+    fontWeight: '600',
   },
   modalTitle: { fontSize: 18, fontWeight: "800", marginBottom: 12 },
   pickerWrap: {
