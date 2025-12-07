@@ -1,3 +1,4 @@
+// PlanScreen.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -6,10 +7,10 @@ import {
   ActivityIndicator,
   Dimensions,
   TouchableOpacity,
-  FlatList,
   Alert,
   ScrollView,
   Platform,
+  Modal,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import type { LatLng } from "react-native-maps";
@@ -18,8 +19,8 @@ import { RouteProp } from '@react-navigation/native';
 import { API_BASE_URL } from "../constants/index";
 
 // --- Replace with your ORS key ---
-const ORS_API_KEY = "YOUR_ORS_API_KEY";
-const ORS_API_URL = "https://api.openrouteservice.org/v2/directions/driving-car";
+const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjE2ZjdkYjkyZmRjNzRlMWRhOTNkNDg3ODJhZDE1NmFiIiwiaCI6Im11cm11cjY0In0=';
+const ORS_API_URL = 'https://api.openrouteservice.org/v2/directions/driving-car';
 
 // screen size
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -94,7 +95,7 @@ function decodePolyline(encoded: string): LatLng[] {
   const coordinates: LatLng[] = [];
 
   while (index < len) {
-    let b;
+    let b: number;
     let shift = 0;
     let result = 0;
     do {
@@ -156,23 +157,26 @@ type Props = {
 const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
   const mapRef = useRef<MapView | null>(null);
 
-  const { selectedTemples, startDistrict, endDistrict, optimizeRoute } = route.params;
+  // Defensive access to route.params
+  const params = route?.params ?? { selectedTemples: [] as Temple[], startDistrict: '', endDistrict: '', optimizeRoute: true };
+  const { selectedTemples = [], startDistrict = '', endDistrict = '', optimizeRoute = true } = params;
 
   const [planningRoute, setPlanningRoute] = useState(false);
   const [tourPlan, setTourPlan] = useState<TourPlan | null>(null);
   const [routeSummaryVisible, setRouteSummaryVisible] = useState(false);
 
-  // load temples on mount
+  // load + plan on mount (only once)
   useEffect(() => {
     createAndCallRouting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // create temple sequence (either optimized or keep selection order)
   const createTempleSequence = (temples: Temple[], optimize: boolean) => {
     if (!optimize) return [...temples];
     // find start and end temples (closest to district centers)
-    const startTemple = findTempleClosestToDistrict(temples, startDistrict);
-    const endTemple = findTempleClosestToDistrict(temples, endDistrict);
+    const startTemple = findTempleClosestToDistrict(temples, startDistrict) as Temple | null;
+    const endTemple = findTempleClosestToDistrict(temples, endDistrict) as Temple | null;
     // exclude start/end from middle list
     const mid = temples.filter(t => t.id !== startTemple?.id && t.id !== endTemple?.id);
     const optimizedMiddle = optimizeRouteWithDestination(mid, startTemple || undefined);
@@ -186,7 +190,7 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // call ORS API
   const callRoutingAPI = async (routeSequence: Temple[]): Promise<TourPlan | null> => {
-    if (routeSequence.length === 0) {
+    if (!routeSequence || routeSequence.length === 0) {
       Alert.alert("No temples", "Please select at least one temple.");
       return null;
     }
@@ -237,21 +241,21 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
       }
 
       // segments: ORS segments correspond to 'legs' on their routeData.segments
-      const segments = routeData.segments.map((seg: any, idx: number) => {
-        let fromName = idx === 0 ? startDistrict : (routeSequence[idx - 1]?.name || "Temple");
-        let toName = (routeSequence[idx]?.name) || endDistrict;
+      const segments = (routeData.segments || []).map((seg: any, idx: number) => {
+        const fromName = idx === 0 ? (startDistrict || 'Start') : (routeSequence[idx - 1]?.name || "Temple");
+        const toName = (routeSequence[idx]?.name) || (endDistrict || 'End');
         return {
-          from: fromName,
-          to: toName,
-          distance: seg.distance, // km
-          duration: seg.duration / 3600 // hours
+          from: String(fromName),
+          to: String(toName),
+          distance: Number(seg.distance) || 0, // km
+          duration: (Number(seg.duration) || 0) / 3600 // hours
         };
       });
 
       const plan: TourPlan = {
         route: routeSequence,
-        totalDistance: Math.round(routeData.summary.distance * 10) / 10,
-        estimatedTime: Math.round((routeData.summary.duration / 3600) * 10) / 10,
+        totalDistance: Math.round((routeData.summary?.distance || 0) * 10) / 10,
+        estimatedTime: Math.round(((routeData.summary?.duration || 0) / 3600) * 10) / 10,
         segments,
         polyline: routeData.geometry, // encoded polyline
         coordinates: coords,
@@ -270,14 +274,14 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
   const createAndCallRouting = async () => {
     setPlanningRoute(true);
     try {
-      const seq = createTempleSequence(selectedTemples, optimizeRoute);
+      const seq = createTempleSequence(selectedTemples || [], optimizeRoute);
       const plan = await callRoutingAPI(seq);
       if (plan) {
         setTourPlan(plan);
         // Fit map to route if possible
         if (mapRef.current && plan.polyline) {
           const coords = decodePolyline(plan.polyline).map((c) => ({ latitude: c.latitude, longitude: c.longitude }));
-          if (coords.length > 0) {
+          if (coords.length > 0 && mapRef.current.fitToCoordinates) {
             mapRef.current.fitToCoordinates(coords, { edgePadding: { top: 80, right: 40, bottom: 160, left: 40 }, animated: true });
           }
         }
@@ -292,16 +296,18 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   // render helpers
-  const renderTempleMarker = (temple: Temple) => {
+  const renderTempleMarker = (temple: Temple, number: number) => {
+    const name = temple?.name ? String(temple.name) : 'Temple';
+    const location = temple?.location ? String(temple.location) : '';
     return (
       <Marker
         key={String(temple.id)}
         coordinate={{ latitude: temple.latitude, longitude: temple.longitude }}
-        title={temple.name}
-        description={temple.location}
+        title={name}
+        description={location}
       >
         <View style={styles.marker}>
-          <Text style={styles.markerText}>{temple.name}</Text>
+          <Text style={styles.markerText}>{String(number)}</Text>
         </View>
       </Marker>
     );
@@ -314,7 +320,6 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -323,7 +328,7 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tour Plan</Text>
-        <View style={{ width: 60 }} /> {/* Spacer for centering */}
+        <View style={{ width: 60 }} /> 
       </View>
 
       {/* Map Container - takes available space */}
@@ -349,8 +354,8 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
           }}
           showsUserLocation={false}
         >
-          {/* Available temples */}
-          {tourPlan?.route.map((t) => renderTempleMarker(t))}
+          {/* Render route markers only when tourPlan exists */}
+          {Array.isArray(tourPlan?.route) && tourPlan?.route.map((t, idx) => renderTempleMarker(t, idx + 1))}
 
           {/* Start / End district markers (simple circle) */}
           {startDistrict && districtCenters[startDistrict] && (
@@ -358,7 +363,7 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
               coordinate={{ latitude: districtCenters[startDistrict][0], longitude: districtCenters[startDistrict][1] }}
             >
               <View style={[styles.districtMarker, { backgroundColor: "#28a745" }]}>
-                <Text style={styles.districtText}>{startDistrict}</Text>
+                <Text style={styles.districtText}>{String(startDistrict)}</Text>
               </View>
             </Marker>
           )}
@@ -367,7 +372,7 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
               coordinate={{ latitude: districtCenters[endDistrict][0], longitude: districtCenters[endDistrict][1] }}
             >
               <View style={[styles.districtMarker, { backgroundColor: "#d9534f" }]}>
-                <Text style={styles.districtText}>{endDistrict}</Text>
+                <Text style={styles.districtText}>{String(endDistrict)}</Text>
               </View>
             </Marker>
           )}
@@ -382,14 +387,13 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
 
           {/* Per-leg info markers */}
-          {tourPlan?.segments && tourPlan.coordinates && tourPlan.segments.map((seg, idx) => {
-            // compute midpoint between coordinates[idx] and coordinates[idx+1]
+          {Array.isArray(tourPlan?.segments) && Array.isArray(tourPlan?.coordinates) && tourPlan.segments.map((seg, idx) => {
             const a = tourPlan.coordinates![idx];
             const b = tourPlan.coordinates![idx + 1];
             if (!a || !b) return null;
             const midLat = (a[1] + b[1]) / 2;
             const midLng = (a[0] + b[0]) / 2;
-            const totalMinutes = Math.round(seg.duration * 60);
+            const totalMinutes = Math.round((seg.duration || 0) * 60);
             const hours = Math.floor(totalMinutes / 60);
             const minutes = totalMinutes % 60;
             const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
@@ -399,12 +403,12 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
                 coordinate={{ latitude: midLat, longitude: midLng }}
               >
                 <View style={styles.legInfoBox}>
-                  <Text style={styles.legDistance}>{Math.round(seg.distance * 10) / 10} km</Text>
-                  <Text style={styles.legTime}>{timeStr}</Text>
+                  <Text style={styles.legDistance}>{String(Math.round(seg.distance || 0))}km</Text>
+                  <Text style={styles.legTime}>{String(timeStr)}</Text>
                 </View>
               </Marker>
             );
-        })}
+          })}
         </MapView>
       </View>
 
@@ -421,47 +425,48 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Route Summary modal */}
-      {routeSummaryVisible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Route Summary</Text>
-            {tourPlan ? (
-              <>
-                <View style={styles.summaryBox}>
-                  <Text style={styles.summaryTitle}>Journey: {tourPlan.startDistrict} → {tourPlan.endDistrict}</Text>
-                  <Text>Distance: {tourPlan.totalDistance} km</Text>
-                  <Text>Estimated time: {tourPlan.estimatedTime} hours</Text>
-                </View>
+      {/* Route Summary modal (simple overlay, all text inside <Text>) */}
+      <Modal visible={routeSummaryVisible} animationType="slide" onRequestClose={() => setRouteSummaryVisible(false)}>  
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Route Summary</Text>
 
-                <ScrollView style={{ flex: 1 }}>
-                  {tourPlan.segments.map((seg, i) => {
-                    const totalMinutes = Math.round(seg.duration * 60);
-                    const hours = Math.floor(totalMinutes / 60);
-                    const minutes = totalMinutes % 60;
-                    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-                    return (
-                      <View key={i} style={styles.segmentRow}>
-                        <Text style={{ fontWeight: "600" }}>{seg.from} → {seg.to}</Text>
-                        <Text>Distance: {Math.round(seg.distance * 10) / 10} km</Text>
-                        <Text>Time: {timeStr}</Text>
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-              </>
-            ) : (
-              <Text>No route planned yet.</Text>
-            )}
+          {tourPlan ? (
+            <>
+              <View style={styles.summaryBox}>
+                <Text style={styles.summaryTitle}>
+                  Journey: {String(tourPlan.startDistrict ?? '')} → {String(tourPlan.endDistrict ?? '')}
+                </Text>
+                <Text>{String(tourPlan.totalDistance)} km</Text> 
+                <Text>{String(tourPlan.estimatedTime)} hours</Text>
+              </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalBtn} onPress={() => setRouteSummaryVisible(false)}>
-                <Text style={styles.modalBtnText}>Close</Text>
-              </TouchableOpacity>
-            </View>
+              <ScrollView style={{ flex: 1 }}>
+                {Array.isArray(tourPlan.segments) && tourPlan.segments.map((seg, i) => {
+                  const totalMinutes = Math.round((seg.duration || 0) * 60);
+                  const hours = Math.floor(totalMinutes / 60);
+                  const minutes = totalMinutes % 60;
+                  const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                  return (
+                    <View key={i} style={styles.segmentRow}>
+                      <Text style={{ fontWeight: "600" }}>{String(seg.from)} → {String(seg.to)}</Text>
+                      <Text>Distance: {String(Math.round((seg.distance || 0) * 10) / 10)} km</Text>
+                      <Text>Time: {String(timeStr)}</Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </>
+          ) : (
+            <Text>No route planned yet.</Text>
+          )}
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity style={styles.modalBtn} onPress={() => setRouteSummaryVisible(false)}>
+              <Text style={styles.modalBtnText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 };
@@ -484,6 +489,7 @@ const haversineDistanceKm = (aLat: number, aLng: number, bLat: number, bLng: num
 
 // find closest temple to district center
 const findTempleClosestToDistrict = (temples: Temple[], districtName: string) => {
+  if (!Array.isArray(temples) || temples.length === 0) return null;
   const center = districtCenters[districtName];
   if (!center) return temples[0] || null;
   let closest: Temple | null = null;
@@ -500,7 +506,7 @@ const findTempleClosestToDistrict = (temples: Temple[], districtName: string) =>
 
 // nearest neighbour optimizer (keeps a start reference)
 const optimizeRouteWithDestination = (temples: Temple[], startTemple?: Temple) => {
-  if (!temples || temples.length <= 1) return temples;
+  if (!temples || temples.length <= 1) return temples || [];
   // start with temple closest to startTemple if provided
   let remaining = [...temples];
   let route: Temple[] = [];
@@ -607,9 +613,9 @@ const styles = StyleSheet.create({
   districtMarker: { padding: 6, borderRadius: 6, borderColor: "#fff", borderWidth: 1, minWidth: 60, alignItems: "center" },
   districtText: { color: "#fff", fontSize: 11, fontWeight: "600" },
 
-  legInfoBox: { backgroundColor: "#fff", borderRadius: 6, padding: 6, borderWidth: 1, borderColor: "#ddd", alignItems: "center" },
-  legDistance: { fontWeight: "700", color: "#c0392b" },
-  legTime: { fontSize: 11, color: "#333" },
+  legInfoBox: { backgroundColor: "#fff", borderRadius: 6, borderWidth: 1, borderColor: "#ddd", alignItems: "center" },
+  legDistance: { fontSize: 12, fontWeight: "700", color: "#c0392b" },
+  legTime: { fontSize: 12, color: "#333" },
 
   controls: {
     position: "absolute", bottom: Platform.OS === 'android' ? 64 : 40, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", zIndex: 1000

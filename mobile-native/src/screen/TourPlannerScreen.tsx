@@ -8,7 +8,6 @@ import {
   Dimensions,
   TouchableOpacity,
   Alert,
-  ScrollView,
   Platform,
   Modal,
   FlatList,
@@ -523,18 +522,22 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Bottom Control Panel */}
-      <View style={styles.bottomPanel}>
-        <View style={styles.controls}>
+      <View style={styles.footer}>
+       
           <TouchableOpacity
-            style={[styles.controlBtn, selectedTemples.length === 0 && styles.controlDisabled]}
+            style={[styles.actionButton, selectedTemples.length === 0 && styles.actionButtonDisabled]}
             onPress={() => setTempleManagementVisible(true)}
             disabled={selectedTemples.length === 0}
           >
-            <Text style={styles.controlText}>Temples ({selectedTemples.length})</Text>
+            <View style={styles.buttonContent}>
+              <Text style={[styles.buttonText]}>
+                Temples ({selectedTemples.length})
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.controlBtn, (selectedTemples.length === 0) && styles.controlDisabled]}
+            style={[styles.actionButton, (selectedTemples.length === 0) && styles.actionButtonDisabled]}
             onPress={() => navigation.navigate('DistrictSelection', {
               selectedTemples,
               startDistrict,
@@ -542,8 +545,13 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
             })}
             disabled={selectedTemples.length === 0}
           >
-            <Text style={styles.controlText}>Continue</Text>
+            <View style={styles.buttonContent}>
+              <Text style={[styles.buttonText]}>
+                Continue
+              </Text>
+            </View>
           </TouchableOpacity>
+          
 
           {tourPlan && (
             <>
@@ -556,7 +564,7 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             </>
           )}
-        </View>
+       
       </View>
 
       
@@ -681,13 +689,84 @@ const styles = StyleSheet.create({
   legTime: { fontSize: 11, color: "#333" },
 
   controls: {
-    position: "absolute", bottom: Platform.OS === 'android' ? 64 : 40, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", zIndex: 1000
+    position: "absolute", bottom: Platform.OS === 'android' ? 54 : 30, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", zIndex: 1000
   },
   controlBtn: {
     backgroundColor: "#007bff", paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, marginHorizontal: 6, minWidth: 100, alignItems: "center"
   },
   controlText: { color: "#fff", fontWeight: "700" },
   controlDisabled: { backgroundColor: "#999" },
+
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'android' ? 54 : 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+  },
+  actionButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#007bff',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  actionButtonDisabled: {
+    backgroundColor: '#ccc',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#ccc',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  actionButtonTextDisabled: {
+    color: '#999',
+  },
+  buttonContent: {
+    alignItems: 'center',
+  },
+  buttonEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  buttonEmojiDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  buttonTextDisabled: {
+    opacity: 0.5,
+  },
 
   modalOverlay: {
     position: 'absolute',

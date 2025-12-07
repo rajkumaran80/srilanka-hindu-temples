@@ -1,3 +1,4 @@
+// DistrictSelectionScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -8,7 +9,6 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-// import { Picker } from '@react-native-picker/picker';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 
@@ -65,11 +65,14 @@ type Props = {
 };
 
 const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { selectedTemples, startDistrict, endDistrict } = route.params;
-  const [selectedStartDistrict, setSelectedStartDistrict] = useState(startDistrict);
-  const [selectedEndDistrict, setSelectedEndDistrict] = useState(endDistrict);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  // Defensive: route.params may be undefined if navigation passed nothing
+  const params = route?.params ?? { selectedTemples: [] as Temple[], startDistrict: '', endDistrict: '' };
+  const { selectedTemples = [], startDistrict = '', endDistrict = '' } = params;
+
+  const [selectedStartDistrict, setSelectedStartDistrict] = useState<string>(startDistrict);
+  const [selectedEndDistrict, setSelectedEndDistrict] = useState<string>(endDistrict);
+  const [showStartPicker, setShowStartPicker] = useState<boolean>(false);
+  const [showEndPicker, setShowEndPicker] = useState<boolean>(false);
 
   const handleOptimizeRoute = () => {
     if (!selectedStartDistrict || !selectedEndDistrict) {
@@ -107,48 +110,57 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Choose Districts</Text>
-        <View style={{ width: 60 }} /> {/* Spacer for centering */}
+
+        {/* spacer */}
+        <View style={{ width: 60 }} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>Start District</Text>
+
         <TouchableOpacity
           style={styles.pickerWrap}
           onPress={() => setShowStartPicker(true)}
         >
-          <Text style={[styles.pickerText, !selectedStartDistrict && styles.placeholderText]}>
-            {selectedStartDistrict || "Select start district..."}
-          </Text>
-          <Text style={styles.dropdownIcon}>▼</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[styles.pickerText, !selectedStartDistrict && styles.placeholderText]}>
+              {selectedStartDistrict ? selectedStartDistrict : 'Select start district...'}
+            </Text>
+            <Text style={styles.dropdownIcon}>▼</Text>
+          </View>
         </TouchableOpacity>
 
         <Text style={styles.label}>End District</Text>
+
         <TouchableOpacity
           style={styles.pickerWrap}
           onPress={() => setShowEndPicker(true)}
         >
-          <Text style={[styles.pickerText, !selectedEndDistrict && styles.placeholderText]}>
-            {selectedEndDistrict || "Select end district..."}
-          </Text>
-          <Text style={styles.dropdownIcon}>▼</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[styles.pickerText, !selectedEndDistrict && styles.placeholderText]}>
+              {selectedEndDistrict ? selectedEndDistrict : 'Select end district...'}
+            </Text>
+            <Text style={styles.dropdownIcon}>▼</Text>
+          </View>
         </TouchableOpacity>
 
         {/* District Info Cards */}
         <View style={styles.infoContainer}>
-          {selectedStartDistrict && (
+          {selectedStartDistrict ? (
             <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>🚀 Start: {selectedStartDistrict}</Text>
               <Text style={styles.infoText}>Your journey begins here</Text>
             </View>
-          )}
+          ) : null}
 
-          {selectedEndDistrict && (
+          {selectedEndDistrict ? (
             <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>🏁 End: {selectedEndDistrict}</Text>
               <Text style={styles.infoText}>Your destination point</Text>
             </View>
-          )}
+          ) : null}
         </View>
       </ScrollView>
 
@@ -162,12 +174,14 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={handleOptimizeRoute}
           disabled={!selectedStartDistrict || !selectedEndDistrict}
         >
-          <Text style={[
-            styles.actionButtonText,
-            (!selectedStartDistrict || !selectedEndDistrict) && styles.actionButtonTextDisabled
-          ]}>
-            🗺️ Optimize Route
-          </Text>
+          <View style={styles.buttonContent}>
+            <Text style={[
+              styles.buttonText,
+              (!selectedStartDistrict || !selectedEndDistrict) && styles.buttonTextDisabled
+            ]}>
+              Optimize Route
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -178,12 +192,14 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={handleKeepOrder}
           disabled={!selectedStartDistrict || !selectedEndDistrict}
         >
-          <Text style={[
-            styles.actionButtonText,
-            (!selectedStartDistrict || !selectedEndDistrict) && styles.actionButtonTextDisabled
-          ]}>
-            📋 Keep Order
-          </Text>
+          <View style={styles.buttonContent}>
+            <Text style={[
+              styles.buttonText,
+              (!selectedStartDistrict || !selectedEndDistrict) && styles.buttonTextDisabled
+            ]}>
+              Keep Order
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -197,6 +213,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.modalTitle}>Select Start District</Text>
             <View style={{ width: 60 }} />
           </View>
+
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {sriLankaDistricts.map(district => (
               <TouchableOpacity
@@ -235,6 +252,7 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.modalTitle}>Select End District</Text>
             <View style={{ width: 60 }} />
           </View>
+
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {sriLankaDistricts.map(district => (
               <TouchableOpacity
@@ -384,7 +402,11 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   footer: {
-    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'android' ? 54 : 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
@@ -392,9 +414,11 @@ const styles = StyleSheet.create({
   actionButton: {
     backgroundColor: '#007bff',
     paddingVertical: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 10,
+    flex: 1,
+    marginHorizontal: 5,
     ...Platform.select({
       ios: {
         shadowColor: '#007bff',
@@ -428,6 +452,24 @@ const styles = StyleSheet.create({
   },
   actionButtonTextDisabled: {
     color: '#999',
+  },
+  buttonContent: {
+    alignItems: 'center',
+  },
+  buttonEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  buttonEmojiDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  buttonTextDisabled: {
+    opacity: 0.5,
   },
   modalContainer: {
     flex: 1,
