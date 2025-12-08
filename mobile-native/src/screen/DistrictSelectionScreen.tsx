@@ -225,6 +225,10 @@ const DistrictSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 ]}
                 onPress={() => {
                   setSelectedStartDistrict(district);
+                  // Automatically set end district to same as start if not already set
+                  if (!selectedEndDistrict) {
+                    setSelectedEndDistrict(district);
+                  }
                   setShowStartPicker(false);
                 }}
               >

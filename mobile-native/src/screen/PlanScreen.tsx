@@ -535,12 +535,6 @@ const PlanScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.emptySubtext}>Please select temples and districts to plan your route.</Text>
             </View>
           )}
-
-          {/* <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalBtn} onPress={() => setRouteSummaryVisible(false)}>
-              <Text style={styles.modalBtnText}>Close</Text>
-            </TouchableOpacity>
-          </View> */}
         </View>
       </Modal>
     </View>
