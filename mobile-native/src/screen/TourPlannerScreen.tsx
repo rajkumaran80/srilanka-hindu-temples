@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   FlatList,
+  ScrollView,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import type { LatLng } from "react-native-maps";
@@ -568,77 +569,88 @@ const TourPlanner: React.FC<Props> = ({ navigation }) => {
        
       </View>
 
-      
-
-
       {/* Temple Management Modal */}
-      <Modal visible={templeManagementVisible} animationType="slide" onRequestClose={() => setTempleManagementVisible(false)}>
+      <Modal
+        visible={templeManagementVisible}
+        animationType="slide"
+        onRequestClose={() => setTempleManagementVisible(false)}
+      >
         <View style={styles.modalContainer}>
-          {/* Header */}
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setTempleManagementVisible(false)} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={() => setTempleManagementVisible(false)}
+              style={styles.backButton}
+            >
               <Text style={styles.backButtonText}>← Back</Text>
             </TouchableOpacity>
+
             <Text style={styles.modalTitle}>Selected Temples ({selectedTemples.length})</Text>
+
             <View style={{ width: 60 }} />
           </View>
 
-          <FlatList
-            data={selectedTemples}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item, index }) => (
-              <View style={styles.selectedItem}>
-                <View style={styles.templeInfo}>
-                  <Text style={styles.templeName}>{index + 1}. {item.name}</Text>
-                  <Text style={styles.templeLocation}>{item.location}</Text>
+          {/* Content - ScrollView replaces FlatList */}
+          <ScrollView
+            style={styles.modalContent}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {selectedTemples && selectedTemples.length > 0 ? (
+              selectedTemples.map((item, index) => (
+                <View key={String(item.id)} style={styles.selectedItem}>
+                  <View style={styles.templeInfo}>
+                    <Text style={styles.templeName}>{index + 1}. {item.name}</Text>
+                    <Text style={styles.templeLocation}>{item.location}</Text>
+                  </View>
+
+                  <View style={styles.actionControls}>
+                    <TouchableOpacity
+                      style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
+                      onPress={() => {
+                        if (index > 0) {
+                          const newTemples = [...selectedTemples];
+                          [newTemples[index], newTemples[index - 1]] = [newTemples[index - 1], newTemples[index]];
+                          setSelectedTemples(newTemples);
+                        }
+                      }}
+                      disabled={index === 0}
+                    >
+                      <Text style={[styles.reorderBtnText, index === 0 && styles.reorderBtnTextDisabled]}>↑</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.reorderBtn, index === selectedTemples.length - 1 && styles.reorderBtnDisabled]}
+                      onPress={() => {
+                        if (index < selectedTemples.length - 1) {
+                          const newTemples = [...selectedTemples];
+                          [newTemples[index], newTemples[index + 1]] = [newTemples[index + 1], newTemples[index]];
+                          setSelectedTemples(newTemples);
+                        }
+                      }}
+                      disabled={index === selectedTemples.length - 1}
+                    >
+                      <Text style={[styles.reorderBtnText, index === selectedTemples.length - 1 && styles.reorderBtnTextDisabled]}>↓</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.removeBtn}
+                      onPress={() => setSelectedTemples(prev => prev.filter(t => t.id !== item.id))}
+                    >
+                      <Text style={styles.removeBtnText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.actionControls}>
-                  <TouchableOpacity
-                    style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
-                    onPress={() => {
-                      if (index > 0) {
-                        const newTemples = [...selectedTemples];
-                        [newTemples[index], newTemples[index - 1]] = [newTemples[index - 1], newTemples[index]];
-                        setSelectedTemples(newTemples);
-                      }
-                    }}
-                    disabled={index === 0}
-                  >
-                    <Text style={[styles.reorderBtnText, index === 0 && styles.reorderBtnTextDisabled]}>↑</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.reorderBtn, index === selectedTemples.length - 1 && styles.reorderBtnDisabled]}
-                    onPress={() => {
-                      if (index < selectedTemples.length - 1) {
-                        const newTemples = [...selectedTemples];
-                        [newTemples[index], newTemples[index + 1]] = [newTemples[index + 1], newTemples[index]];
-                        setSelectedTemples(newTemples);
-                      }
-                    }}
-                    disabled={index === selectedTemples.length - 1}
-                  >
-                    <Text style={[styles.reorderBtnText, index === selectedTemples.length - 1 && styles.reorderBtnTextDisabled]}>↓</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.removeBtn}
-                    onPress={() => {
-                      setSelectedTemples(prev => prev.filter(t => t.id !== item.id));
-                    }}
-                  >
-                    <Text style={styles.removeBtnText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            ListEmptyComponent={
+              ))
+            ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>No temples selected</Text>
                 <Text style={styles.emptySubtext}>Go back and tap on temple markers to select them</Text>
               </View>
-            }
-          />
+            )}
+          </ScrollView>
         </View>
       </Modal>
+      
     </View>
   );
 };

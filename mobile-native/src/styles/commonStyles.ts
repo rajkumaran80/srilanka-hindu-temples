@@ -18,7 +18,7 @@ export const commonStyles = StyleSheet.create({
     borderRadius: 8,
     padding: 20,
     margin: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
     width: '90%',
     ...Platform.select({
       ios: {
@@ -215,7 +215,7 @@ export const commonStyles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: 20,
+    padding: 10,
   },
 
   // Loading styles

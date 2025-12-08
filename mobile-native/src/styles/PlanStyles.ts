@@ -10,9 +10,9 @@ export const planStyles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: '#fff',
-    margin: 20,
+    margin: 0,
     borderRadius: 12,
-    maxHeight: '90%',
+    maxHeight: '100%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',

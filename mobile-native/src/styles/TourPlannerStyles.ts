@@ -5,6 +5,30 @@ export const tourPlannerStyles = StyleSheet.create({
   ...commonStyles,
   mapContainer: { flex: 1 },
   map: { flex: 1 },
+
+  // Override modal container to extend to bottom for temple management modal
+  modalContainer: {
+     flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 20,
+    marginTop: 0,
+    marginBottom: 0,
+    marginHorizontal: 0,
+    maxHeight: '100%', // Allow it to extend almost to the bottom
+    width: '100%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
   bottomPanel: {
     height: 120,
     backgroundColor: "#f8f9fa",
@@ -149,5 +173,10 @@ export const tourPlannerStyles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     maxWidth: 280,
+  },
+
+  // FlatList container to extend to bottom
+  flatListContainer: {
+    flex: 1,
   },
 });
